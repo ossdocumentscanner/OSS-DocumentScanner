@@ -11,7 +11,7 @@ Aidez à améliorer cette documentation ! Nous accueillons les contributions de 
 
 ## Démarrage Rapide
 
-1. **Forkez le dépôt** : [github.com/Akylas/OSS-DocumentScanner](https://github.com/Akylas/OSS-DocumentScanner)
+1. **Forkez le dépôt** : [github.com/ossdocumentscanner/OSS-DocumentScanner](https://github.com/ossdocumentscanner/OSS-DocumentScanner)
 
 2. **Clonez votre fork** :
    ```bash
@@ -249,8 +249,8 @@ Brève description des modifications
 
 ## Obtenir de l'Aide
 
-- **Questions** : Ouvrez une [Discussion GitHub](https://github.com/Akylas/OSS-DocumentScanner/discussions)
-- **Bugs** : Ouvrez une [Issue GitHub](https://github.com/Akylas/OSS-DocumentScanner/issues)
+- **Questions** : Ouvrez une [Discussion GitHub](https://github.com/ossdocumentscanner/OSS-DocumentScanner/discussions)
+- **Bugs** : Ouvrez une [Issue GitHub](https://github.com/ossdocumentscanner/OSS-DocumentScanner/issues)
 - **Chat** : Rejoignez la communauté sur GitHub
 
 ## Reconnaissance
