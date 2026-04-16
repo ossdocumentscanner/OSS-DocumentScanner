@@ -1,6 +1,9 @@
+import { HttpsRequestOptions } from '@nativescript-community/https';
 import { File } from '@nativescript/core';
+import PaperlessNgxPDFSyncSettings from '~/components/settings/sync/paperless/PaperlessNgxPDFSyncSettings.svelte';
 import { request } from '~/services/api';
 import type { BufferLike } from '~/services/api';
+import { PaperlessNgxPDFSyncService, PaperlessNgxPDFSyncServiceOptions } from '~/services/sync/paperless/PaperlessNgxPDFSyncService';
 
 export interface PaperlessNgxSyncOptions {
     serverUrl: string;
@@ -32,27 +35,51 @@ function getBaseUrl(serverUrl: string): string {
 }
 
 function getAuthHeaders(token: string): Record<string, string> {
-    return {
-        Authorization: `Token ${token}`
-    };
+    if (token) {
+        return {
+            Authorization: `Token ${token}`
+        };
+    }
+    return {};
+}
+
+export async function makeRequest<T = any>(service: PaperlessNgxPDFSyncService, endpoint: string, options: Partial<HttpsRequestOptions> = {}) {
+    const { headers = {}, ...others } = options;
+    const baseUrl = getBaseUrl(service.serverUrl);
+
+    const requestOptions = {
+        url: `${baseUrl}${endpoint}`,
+        headers: {
+            ...getAuthHeaders(service.token),
+            ...headers
+        },
+        responseOnMainThread: false,
+        ...others
+    } as HttpsRequestOptions;
+    return request<T>(requestOptions);
 }
 
 /**
  * Acquire a token from Paperless-ngx using username/password credentials.
  * POST /api/token/
  */
-export async function acquireToken(serverUrl: string, username: string, password: string): Promise<string> {
-    const baseUrl = getBaseUrl(serverUrl);
-    const response = await request<{ token: string }>({
-        url: `${baseUrl}/api/token/`,
+export async function acquireToken(service: PaperlessNgxPDFSyncService, username: string, password: string): Promise<string> {
+    const response = await makeRequest<{ token: string }>(service, `/api/token/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ username, password })
+        body: { username, password }
     });
     const data = await response.json();
     return data.token;
+}
+
+export async function ensureToken(service: PaperlessNgxPDFSyncService) {
+    if (!service.token && service.username && service.password) {
+        service.token = await acquireToken(service, service.username, service.password);
+    }
+    return service.token;
 }
 
 /**
@@ -63,7 +90,7 @@ export async function testPaperlessConnection({ serverUrl, token, username, pass
     try {
         let authToken = token;
         if (!authToken && username && password) {
-            authToken = await acquireToken(serverUrl, username, password);
+            authToken = await acquireToken({ serverUrl } as PaperlessNgxPDFSyncService, username, password);
         }
         const baseUrl = getBaseUrl(serverUrl);
         const response = await request<PaperlessDocumentListResponse>({
@@ -85,17 +112,17 @@ export async function testPaperlessConnection({ serverUrl, token, username, pass
 /**
  * List documents from Paperless-ngx. Fetches all pages.
  */
-export async function listDocuments(options: PaperlessNgxSyncOptions): Promise<PaperlessDocument[]> {
-    const baseUrl = getBaseUrl(options.serverUrl);
+export async function listDocuments(service: PaperlessNgxPDFSyncService): Promise<PaperlessDocument[]> {
+    await ensureToken(service);
+    const baseUrl = getBaseUrl(service.serverUrl);
     const results: PaperlessDocument[] = [];
     let url: string | null = `${baseUrl}/api/documents/?page_size=100&fields=id,title,modified,added,original_file_name`;
 
     while (url) {
-        const response = await request<PaperlessDocumentListResponse>({
+        const response = await makeRequest<PaperlessDocumentListResponse>(service, '/api/documents/?page_size=100&fields=id,title,modified,added,original_file_name', {
             url,
             method: 'GET',
             headers: {
-                ...getAuthHeaders(options.token),
                 'Content-Type': 'application/json'
             }
         });
@@ -110,15 +137,13 @@ export async function listDocuments(options: PaperlessNgxSyncOptions): Promise<P
  * Upload a PDF document to Paperless-ngx via POST /api/documents/post_document/
  * Returns the task UUID.
  */
-export async function uploadDocument(options: PaperlessNgxSyncOptions, title: string, fileData: File | BufferLike | string): Promise<string> {
-    const baseUrl = getBaseUrl(options.serverUrl);
+export async function uploadDocument(service: PaperlessNgxPDFSyncService, title: string, fileData: File | BufferLike | string): Promise<string> {
+    await ensureToken(service);
     const fileName = title.endsWith('.pdf') ? title : `${title}.pdf`;
 
-    const response = await request<string>({
-        url: `${baseUrl}/api/documents/post_document/`,
+    const response = await makeRequest<string>(service, '/api/documents/post_document/', {
         method: 'POST',
         headers: {
-            ...getAuthHeaders(options.token),
             'Content-Type': 'multipart/form-data'
         },
         body: [

@@ -6,7 +6,7 @@ import { networkService } from '~/services/api';
 import { DocumentEvents } from '~/services/documents';
 import PDFExportCanvas from '~/services/pdf/PDFExportCanvas';
 import { BasePDFSyncService, BasePDFSyncServiceOptions } from '~/services/sync/BasePDFSyncService';
-import { PaperlessNgxSyncOptions, acquireToken, listDocuments, uploadDocument } from '~/services/sync/paperless/PaperlessNgx';
+import { PaperlessNgxSyncOptions, acquireToken, ensureToken, listDocuments, uploadDocument } from '~/services/sync/paperless/PaperlessNgx';
 import { SERVICES_SYNC_MASK } from '~/services/sync/types';
 import { PDF_EXT } from '~/utils/constants';
 import { getPageColorMatrix } from '~/utils/matrix';
@@ -40,15 +40,12 @@ export class PaperlessNgxPDFSyncService extends BasePDFSyncService {
     /**
      * Paperless-ngx manages its own storage — no remote folder to create.
      */
-    override async ensureRemoteFolder(): Promise<void> {
-        // Ensure we have a valid token (acquire one if only username/password configured)
-        if (!this.token && this.username && this.password) {
-            this.token = await acquireToken(this.serverUrl, this.username, this.password);
-        }
+    override async ensureRemoteFolder(): Promise<any> {
+        return ensureToken(this);
     }
 
     override async getRemoteFolderFiles(_relativePath: string): Promise<FileStat[]> {
-        const documents = await listDocuments({ serverUrl: this.serverUrl, token: this.token });
+        const documents = await listDocuments(this);
         return documents.map((doc) => {
             const baseName = doc.original_file_name || `${doc.title}.pdf`;
             const displayName = baseName.endsWith(PDF_EXT) ? baseName : `${baseName}${PDF_EXT}`;
@@ -89,7 +86,7 @@ export class PaperlessNgxPDFSyncService extends BasePDFSyncService {
         }
         const localFilePath = path.join(temp, fileName);
         try {
-            await uploadDocument({ serverUrl: this.serverUrl, token: this.token }, fileName, File.fromPath(localFilePath));
+            await uploadDocument(this, fileName, File.fromPath(localFilePath));
         } finally {
             try {
                 File.fromPath(localFilePath).remove();

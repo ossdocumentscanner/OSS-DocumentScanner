@@ -5,6 +5,7 @@
     import { lc } from '~/helpers/locale';
     import { acquireToken, testPaperlessConnection } from '~/services/sync/paperless/PaperlessNgx';
     import type { PaperlessNgxSyncOptions } from '~/services/sync/paperless/PaperlessNgx';
+    import { PaperlessNgxPDFSyncService } from '~/services/sync/paperless/PaperlessNgxPDFSyncService';
     import { colors } from '~/variables';
 
     $: ({ colorError, colorOnError, colorSecondary } = $colors);
@@ -28,7 +29,7 @@
 
             // If only username/password provided, acquire a token first
             if (!data.token && data.username && data.password) {
-                const acquiredToken = await acquireToken(data.serverUrl, data.username, data.password);
+                const acquiredToken = await acquireToken({ serverUrl: data.serverUrl } as PaperlessNgxPDFSyncService, data.username, data.password);
                 $store.token = acquiredToken;
                 // Clear password from store so it is not persisted; the token is used going forward
                 $store.password = '';
