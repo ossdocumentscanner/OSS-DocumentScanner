@@ -212,7 +212,6 @@ export class PKPassRepository extends BaseRepository<PKPass, PKPass> {
         CREATE TABLE IF NOT EXISTS "PKPass" (
             id TEXT PRIMARY KEY NOT NULL,
             page_id TEXT NOT NULL,
-            passType TEXT NOT NULL DEFAULT 'pkpass',
             passData TEXT NOT NULL,
             images TEXT,
             passJsonPath TEXT,

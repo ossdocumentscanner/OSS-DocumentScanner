@@ -1,5 +1,7 @@
+import { IgnoreError, PermissionError, SilentError } from '@akylas/nativescript-app-utils/error';
 import { share } from '@akylas/nativescript-app-utils/share';
 import { MultiResult, Permissions, Status, isPermResultAuthorized, openSettings, request } from '@nativescript-community/perms';
+import { ComponentInstanceInfo, resolveComponentElement } from '@nativescript-community/svelte-native/dom';
 import { openFilePicker, pickFolder } from '@nativescript-community/ui-document-picker';
 import { Label } from '@nativescript-community/ui-label';
 import { showBottomSheet } from '@nativescript-community/ui-material-bottomsheet/svelte';
@@ -7,7 +9,6 @@ import { MDCAlertControlerOptions, alert, confirm, prompt } from '@nativescript-
 import { HorizontalPosition, PopoverOptions, VerticalPosition } from '@nativescript-community/ui-popover';
 import { closePopover, showPopover } from '@nativescript-community/ui-popover/svelte';
 import {
-    AlertOptions,
     Animation,
     AnimationDefinition,
     Application,
@@ -29,7 +30,6 @@ import { ConfirmOptions } from '@nativescript/core/ui/dialogs/dialogs-common';
 import { SDK_VERSION, copyToClipboard, debounce, openFile } from '@nativescript/core/utils';
 import { create as createImagePicker } from '@nativescript/imagepicker';
 import { doInBatch } from '@shared/utils/batch';
-import { IgnoreError, PermissionError, SilentError } from '@akylas/nativescript-app-utils/error';
 import { showError } from '@shared/utils/showError';
 import { goBack, navigate, showModal } from '@shared/utils/svelte/ui';
 import { hideLoading, showLoading, showSnack, updateLoadingProgress } from '@shared/utils/ui';
@@ -46,8 +46,8 @@ import {
     printPDF,
     processFromFile
 } from 'plugin-nativeprocessor';
+import { zip } from 'plugin-zip';
 import type { ComponentProps } from 'svelte';
-import { ComponentInstanceInfo, resolveComponentElement } from '@nativescript-community/svelte-native/dom';
 import { get } from 'svelte/store';
 import type ExportPDFAlertOptions__SvelteComponent_ from '~/components/common/ExportPDFAlertOptions.svelte';
 import type OptionSelect__SvelteComponent_ from '~/components/common/OptionSelect.svelte';
@@ -74,13 +74,11 @@ import {
     DEFAULT_OCR_COPY_USE_SPACE,
     DEFAULT_TRANSFORM,
     DOCUMENT_NOT_DETECTED_MARGIN,
-    IMG_COMPRESS,
-    IMG_FORMAT,
+    ESPASS_EXT,
     PDFImportImages,
     PDF_EXT,
     PDF_IMPORT_IMAGES,
     PKPASS_EXT,
-    ESPASS_EXT,
     PREVIEW_RESIZE_THRESHOLD,
     QRCODE_RESIZE_THRESHOLD,
     SEPARATOR,
@@ -91,8 +89,6 @@ import {
     SETTINGS_DEFAULT_COLORTYPE,
     SETTINGS_DEFAULT_CONTRAST,
     SETTINGS_DEFAULT_TRANSFORM,
-    SETTINGS_IMAGE_EXPORT_FORMAT,
-    SETTINGS_IMAGE_EXPORT_QUALITY,
     SETTINGS_IMPORT_PDF_IMAGES,
     SETTINGS_OCR_COPY_USE_SPACE,
     SETTINGS_TRANSFORM_BATCH_SIZE,
@@ -102,12 +98,11 @@ import {
     getImageExportSettings
 } from '~/utils/constants';
 import { recycleImages } from '~/utils/images';
-import { showToast, timeout } from '~/utils/ui';
+import { importPKPassFiles } from '~/utils/pkpass-import';
+import { showToast } from '~/utils/ui';
 import { colors, fontScale, screenWidthDips } from '~/variables';
 import { MatricesTypes, Matrix } from '../color_matrix';
 import { cleanFilename, saveImage } from '../utils';
-import { importPKPassFiles } from '~/utils/pkpass-import';
-import { zip } from 'plugin-zip';
 
 export { ColorMatricesType, ColorMatricesTypes, getColorMatrix } from '~/utils/matrix';
 
@@ -442,8 +437,13 @@ export async function importAndScanImage({
         } else {
             selection = (
                 await openFilePicker({
-                    mimeTypes: ['image/*', 'application/pdf'].concat(CARD_APP ? ['application/vnd.apple.pkpass', 'application/vnd.espass-espass'] : []),
-                    documentTypes: __IOS__ ? [UTTypeImage.identifier, UTTypePDF.identifier, UTType.typeWithFilenameExtension('pkpass').identifier, UTType.typeWithFilenameExtension('espass').identifier] : undefined,
+                    // we need */* or we cant pick up .espass as it is not a known andorid mimetype
+                    mimeTypes: ['image/*', 'application/pdf'].concat(CARD_APP ? ['application/vnd.apple.pkpass', 'application/vnd.espass-espass', '*/*'] : []),
+                    documentTypes: __IOS__
+                        ? [UTTypeImage.identifier, UTTypePDF.identifier].concat(
+                              CARD_APP ? [UTType.typeWithFilenameExtension('pkpass').identifier, UTType.typeWithFilenameExtension('espass').identifier] : []
+                          )
+                        : undefined,
                     multipleSelection: true,
                     pickerMode: 0,
                     forceSAF: true

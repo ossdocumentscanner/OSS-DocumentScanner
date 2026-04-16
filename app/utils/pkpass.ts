@@ -6,7 +6,7 @@ import { Color, File, Folder, ImageSource, PercentLength, Screen, Utils, path } 
 import { generateQRCodeImage, getSVGFromQRCode, getSVGFromQRCodeSync } from 'plugin-nativeprocessor';
 import { unzip } from 'plugin-zip';
 import type { OCRDocument } from '~/models/OCRDocument';
-import { PKBarcodeFormat, PKPass, PKPassType, type PKPassBarcode, type PKPassData, type PKPassField, type PKPassImages, type PKPassStructure, PKPassStyle, PKPassTransitType } from '~/models/PKPass';
+import { PKBarcodeFormat, PKPass, type PKPassBarcode, type PKPassData, type PKPassField, type PKPassImages, type PKPassStructure, PKPassStyle, PKPassTransitType, PKPassType } from '~/models/PKPass';
 import { CARD_RATIO } from './constants';
 import { loadImage, recycleImages } from './images';
 
@@ -107,10 +107,7 @@ export function convertEspassToPKPassData(espassJson: any): PKPassData {
     const primaryFields: PKPassField[] = visibleFields.slice(0, 2).map((f, i) => toField(f, i));
     const secondaryFields: PKPassField[] = visibleFields.slice(2, 5).map((f, i) => toField(f, i + 2));
     const auxiliaryFields: PKPassField[] = visibleFields.slice(5, 9).map((f, i) => toField(f, i + 5));
-    const backFields: PKPassField[] = [
-        ...visibleFields.slice(9).map((f, i) => toField(f, i + 9)),
-        ...hiddenFields.map((f, i) => toField(f, i + visibleFields.length))
-    ];
+    const backFields: PKPassField[] = [...visibleFields.slice(9).map((f, i) => toField(f, i + 9)), ...hiddenFields.map((f, i) => toField(f, i + visibleFields.length))];
 
     // Transit type for boarding passes (ESpass doesn't specify vehicle type, default to Generic)
     const transitType = style === PKPassStyle.BoardingPass ? PKPassTransitType.Generic : undefined;
@@ -148,6 +145,13 @@ export function convertEspassToPKPassData(espassJson: any): PKPassData {
         expirationDate = espassJson.validTimespans[0].to;
     }
 
+    let backgroundColor = espassJson.accentColor;
+    if (backgroundColor && /^#([A-Fa-f0-9]{8})$/.test(backgroundColor)) {
+        // color hex is #AARRGGBB instead of #RRGGBBAA
+        const color = new Color(backgroundColor);
+        backgroundColor = backgroundColor = new Color(color.r, color.g, color.b, color.a).hex;
+    }
+
     const pkpassData: PKPassData = {
         formatVersion: 1,
         passTypeIdentifier: `espass.${espassJson.id || 'unknown'}`,
@@ -155,7 +159,7 @@ export function convertEspassToPKPassData(espassJson: any): PKPassData {
         teamIdentifier: espassJson.creator || 'espass',
         organizationName: espassJson.description || '',
         description: espassJson.description || '',
-        backgroundColor: espassJson.accentColor,
+        backgroundColor,
         barcode,
         locations: locations.length ? locations : undefined,
         expirationDate
