@@ -6,7 +6,7 @@ import { Color, File, Folder, ImageSource, PercentLength, Screen, Utils, path } 
 import { generateQRCodeImage, getSVGFromQRCode, getSVGFromQRCodeSync } from 'plugin-nativeprocessor';
 import { unzip } from 'plugin-zip';
 import type { OCRDocument } from '~/models/OCRDocument';
-import { PKBarcodeFormat, PKPass, type PKPassBarcode, type PKPassData, type PKPassField, type PKPassImages, type PKPassStructure, PKPassStyle, PKPassTransitType } from '~/models/PKPass';
+import { PKBarcodeFormat, PKPass, PKPassType, type PKPassBarcode, type PKPassData, type PKPassField, type PKPassImages, type PKPassStructure, PKPassStyle, PKPassTransitType } from '~/models/PKPass';
 import { CARD_RATIO } from './constants';
 import { loadImage, recycleImages } from './images';
 
@@ -37,6 +37,149 @@ const IMAGE_FILES = [
 export interface PKPassParseResult {
     pass: PKPass;
     extractedPath: string;
+}
+
+/**
+ * Map ESpass barcode format string to PKBarcodeFormat enum
+ */
+function mapEspassBarcodeFormat(format: string): PKBarcodeFormat {
+    switch ((format || '').toUpperCase()) {
+        case 'AZTEC':
+            return PKBarcodeFormat.Aztec;
+        case 'QR_CODE':
+        case 'QR':
+            return PKBarcodeFormat.QR;
+        case 'PDF_417':
+        case 'PDF417':
+            return PKBarcodeFormat.PDF417;
+        case 'CODE128':
+        case 'CODE_128':
+            return PKBarcodeFormat.Code128;
+        default:
+            return PKBarcodeFormat.QR;
+    }
+}
+
+/**
+ * Convert an ESpass JSON object into the standard PKPassData structure.
+ * This allows all existing rendering code (PKPassView, PKPassCardCell, canvas renderer)
+ * to work without any changes.
+ *
+ * ESpass spec: https://espass.it/how/
+ */
+export function convertEspassToPKPassData(espassJson: any): PKPassData {
+    // Determine pass style from ESpass type
+    let style: PKPassStyle;
+    switch ((espassJson.type || '').toUpperCase()) {
+        case 'BOARDING':
+            style = PKPassStyle.BoardingPass;
+            break;
+        case 'COUPON':
+        case 'VOUCHER':
+            style = PKPassStyle.Coupon;
+            break;
+        case 'EVENT':
+            style = PKPassStyle.EventTicket;
+            break;
+        case 'LOYALTY':
+        case 'MEMBERSHIP':
+        case 'STORECARD':
+            style = PKPassStyle.StoreCard;
+            break;
+        default:
+            style = PKPassStyle.Generic;
+    }
+
+    // Separate visible and hidden fields
+    const allFields: any[] = espassJson.fields || [];
+    const visibleFields = allFields.filter((f) => !f.hide);
+    const hiddenFields = allFields.filter((f) => f.hide);
+
+    function toField(f: any, index: number): PKPassField {
+        return { key: `field_${index}`, label: f.label, value: f.value };
+    }
+
+    // Distribute visible fields across sections similar to pkpass conventions
+    // Primary (big display): up to 2 fields
+    // Secondary: up to 3 fields
+    // Auxiliary: up to 4 fields
+    // Back: hidden fields + overflow
+    const primaryFields: PKPassField[] = visibleFields.slice(0, 2).map((f, i) => toField(f, i));
+    const secondaryFields: PKPassField[] = visibleFields.slice(2, 5).map((f, i) => toField(f, i + 2));
+    const auxiliaryFields: PKPassField[] = visibleFields.slice(5, 9).map((f, i) => toField(f, i + 5));
+    const backFields: PKPassField[] = [
+        ...visibleFields.slice(9).map((f, i) => toField(f, i + 9)),
+        ...hiddenFields.map((f, i) => toField(f, i + visibleFields.length))
+    ];
+
+    // Transit type for boarding passes (ESpass doesn't specify vehicle type, default to Generic)
+    const transitType = style === PKPassStyle.BoardingPass ? PKPassTransitType.Generic : undefined;
+
+    const structure: PKPassStructure = {
+        primaryFields: primaryFields.length ? primaryFields : undefined,
+        secondaryFields: secondaryFields.length ? secondaryFields : undefined,
+        auxiliaryFields: auxiliaryFields.length ? auxiliaryFields : undefined,
+        backFields: backFields.length ? backFields : undefined,
+        transitType
+    };
+
+    // Convert barcode
+    let barcode: PKPassBarcode | undefined;
+    const bc = espassJson.barCode;
+    if (bc && bc.message) {
+        barcode = {
+            format: mapEspassBarcodeFormat(bc.format),
+            message: bc.message,
+            messageEncoding: 'iso-8859-1',
+            altText: bc.alternative_text
+        };
+    }
+
+    // Convert locations
+    const locations = (espassJson.locations || []).map((loc: any) => ({
+        latitude: parseFloat(loc.lat) || 0,
+        longitude: parseFloat(loc.lon) || 0,
+        relevantText: loc.name
+    }));
+
+    // Expiration from validTimespans
+    let expirationDate: string | undefined;
+    if (espassJson.validTimespans && espassJson.validTimespans.length > 0) {
+        expirationDate = espassJson.validTimespans[0].to;
+    }
+
+    const pkpassData: PKPassData = {
+        formatVersion: 1,
+        passTypeIdentifier: `espass.${espassJson.id || 'unknown'}`,
+        serialNumber: espassJson.id || Date.now().toString(),
+        teamIdentifier: espassJson.creator || 'espass',
+        organizationName: espassJson.description || '',
+        description: espassJson.description || '',
+        backgroundColor: espassJson.accentColor,
+        barcode,
+        locations: locations.length ? locations : undefined,
+        expirationDate
+    };
+
+    // Attach structure under the matching key
+    switch (style) {
+        case PKPassStyle.BoardingPass:
+            pkpassData.boardingPass = structure;
+            break;
+        case PKPassStyle.Coupon:
+            pkpassData.coupon = structure;
+            break;
+        case PKPassStyle.EventTicket:
+            pkpassData.eventTicket = structure;
+            break;
+        case PKPassStyle.StoreCard:
+            pkpassData.storeCard = structure;
+            break;
+        default:
+            pkpassData.generic = structure;
+    }
+
+    return pkpassData;
 }
 
 const fieldsPaint = new Paint();
@@ -93,14 +236,17 @@ function loadPKPassLocalizations(extractPath: string): { [languageCode: string]:
 }
 
 /**
- * Parse a .pkpass file and extract its contents
- * @param pkpassFilePath Path to the .pkpass file
+ * Parse a .pkpass or .espass file and extract its contents.
+ * ESpass files use the same ZIP container format as PKPass but have a different JSON schema.
+ * This function auto-detects the format and normalises ESpass data into PKPassData so that
+ * the existing rendering pipeline (PKPassView, canvas renderer) can be reused without changes.
+ * @param pkpassFilePath Path to the .pkpass or .espass file
  * @param targetFolder Folder where to extract the pass data
  * @returns PKPassParseResult with the parsed pass and extraction path
  */
 export async function extractAndParsePKPassFile(pkpassFilePath: string, targetFolder: Folder): Promise<PKPassParseResult> {
     if (!File.exists(pkpassFilePath)) {
-        throw new Error(`PKPass file not found: ${pkpassFilePath}`);
+        throw new Error(`Pass file not found: ${pkpassFilePath}`);
     }
 
     // Create a unique folder for this pass
@@ -109,31 +255,53 @@ export async function extractAndParsePKPassFile(pkpassFilePath: string, targetFo
     const extractFolder = Folder.fromPath(extractPath);
 
     try {
-        // Extract the .pkpass file (which is a ZIP archive)
+        // Both .pkpass and .espass are ZIP archives
         await unzip({
             archive: pkpassFilePath,
             directory: extractPath
         });
 
-        // Read pass.json
+        // Try to locate the JSON descriptor:
+        // 1. Standard PKPass: pass.json at the root
+        // 2. ESpass: may also be pass.json, or any .json file at the root
         const passJsonPath = path.join(extractPath, PASS_JSON_FILE);
-        if (!File.exists(passJsonPath)) {
-            throw new Error('pass.json not found in PKPass file');
+        let rawJsonContent: string;
+        let passType: PKPassType = PKPassType.PKPass;
+
+        if (File.exists(passJsonPath)) {
+            rawJsonContent = await File.fromPath(passJsonPath).readText();
+        } else {
+            // Look for any .json file in the root of the extracted archive
+            const extractFolder2 = Folder.fromPath(extractPath);
+            const entities = extractFolder2.getEntitiesSync();
+            const jsonFile = entities.find((e) => !(e instanceof Folder) && e.name.endsWith('.json'));
+            if (!jsonFile) {
+                throw new Error('No JSON descriptor found in pass file');
+            }
+            rawJsonContent = await File.fromPath(jsonFile.path).readText();
         }
 
-        const passJsonFile = File.fromPath(passJsonPath);
-        const passJsonContent = await passJsonFile.readText();
-        const passData: PKPassData = JSON.parse(passJsonContent);
+        const rawJson = JSON.parse(rawJsonContent);
 
-        // Load all localizations from .lproj folders
-        const allLocalizations = loadPKPassLocalizations(extractPath);
+        // Detect format: ESpass uses flat `fields` array and lacks PKPass's `formatVersion`
+        let passData: PKPassData;
+        if (!rawJson.formatVersion && (Array.isArray(rawJson.fields) || rawJson.type)) {
+            // ESpass format — convert to unified PKPassData
+            passType = PKPassType.ESpass;
+            passData = convertEspassToPKPassData(rawJson);
+        } else {
+            // Standard PKPass format
+            passType = PKPassType.PKPass;
+            passData = rawJson as PKPassData;
 
-        // Store all localizations in passData
-        if (Object.keys(allLocalizations).length > 0) {
-            passData._allLocalizations = allLocalizations;
+            // Load localizations from .lproj folders (pkpass only)
+            const allLocalizations = loadPKPassLocalizations(extractPath);
+            if (Object.keys(allLocalizations).length > 0) {
+                passData._allLocalizations = allLocalizations;
+            }
         }
 
-        // Extract image paths
+        // Extract image paths (same names for both formats)
         const images: PKPassImages = {};
         for (const imageFile of IMAGE_FILES) {
             const imagePath = path.join(extractPath, imageFile);
@@ -143,12 +311,10 @@ export async function extractAndParsePKPassFile(pkpassFilePath: string, targetFo
             }
         }
 
-        // Create PKPass object
-        const pass = new PKPass(passId, ''); // document_id will be set by caller
+        // Create PKPass object (document_id will be set by caller)
+        const pass = new PKPass(passId, '', passType);
         pass.passData = passData;
         pass.images = images;
-        // pass.passJsonPath = passJsonPath;
-        // pass.imagesPath = extractPath;
 
         return {
             pass,
@@ -161,7 +327,7 @@ export async function extractAndParsePKPassFile(pkpassFilePath: string, targetFo
                 await extractFolder.remove();
             }
         } catch (cleanupError) {
-            console.error('Error cleaning up after PKPass parse failure:', cleanupError);
+            console.error('Error cleaning up after pass parse failure:', cleanupError);
         }
         throw error;
     }
@@ -251,8 +417,9 @@ export function isPKPassFile(filePath: string): boolean {
         return false;
     }
 
-    // Check file extension
-    return filePath.toLowerCase().endsWith('.pkpass');
+    // Check file extension — both .pkpass and .espass are supported
+    const lower = filePath.toLowerCase();
+    return lower.endsWith('.pkpass') || lower.endsWith('.espass');
 }
 
 export function getFieldTextAlignment(field: PKPassField, defaultValue = 'left'): 'left' | 'right' | 'center' | 'initial' {

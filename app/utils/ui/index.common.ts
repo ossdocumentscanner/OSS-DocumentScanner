@@ -80,6 +80,7 @@ import {
     PDF_EXT,
     PDF_IMPORT_IMAGES,
     PKPASS_EXT,
+    ESPASS_EXT,
     PREVIEW_RESIZE_THRESHOLD,
     QRCODE_RESIZE_THRESHOLD,
     SEPARATOR,
@@ -130,7 +131,7 @@ export async function importAndScanImageOrPdfFromUris({ canGoToView = true, docu
                     testStr = await getFileName(e);
                 }
                 acc.then((obj) => {
-                    if (CARD_APP && testStr.endsWith(PKPASS_EXT)) {
+                    if (CARD_APP && (testStr.endsWith(PKPASS_EXT) || testStr.endsWith(ESPASS_EXT))) {
                         obj[2].push(e);
                     } else if (testStr.endsWith(PDF_EXT)) {
                         obj[0].push(e);
@@ -441,8 +442,8 @@ export async function importAndScanImage({
         } else {
             selection = (
                 await openFilePicker({
-                    mimeTypes: ['image/*', 'application/pdf'].concat(CARD_APP ? ['application/vnd.apple.pkpass'] : []),
-                    documentTypes: __IOS__ ? [UTTypeImage.identifier, UTTypePDF.identifier, UTType.typeWithFilenameExtension('pkpass').identifier] : undefined,
+                    mimeTypes: ['image/*', 'application/pdf'].concat(CARD_APP ? ['application/vnd.apple.pkpass', 'application/vnd.espass-espass'] : []),
+                    documentTypes: __IOS__ ? [UTTypeImage.identifier, UTTypePDF.identifier, UTType.typeWithFilenameExtension('pkpass').identifier, UTType.typeWithFilenameExtension('espass').identifier] : undefined,
                     multipleSelection: true,
                     pickerMode: 0,
                     forceSAF: true
@@ -1136,8 +1137,9 @@ export async function showImagePopoverMenu(pages: { page: OCRPage; document: OCR
                                         index
                                     ) => {
                                         const page = p.page;
+                                        const passExt = page.pkpass?.passType === 'espass' ? ESPASS_EXT : PKPASS_EXT;
                                         const fileName = page.name ?? p.document.name ?? `${p.document.id}_${page.pkpass_id}`;
-                                        const outputZip = knownFolders.temp().getFolder(`${cleanFilename(fileName)}.pkpass`, false);
+                                        const outputZip = knownFolders.temp().getFolder(`${cleanFilename(fileName)}${passExt}`, false);
 
                                         const docFolder = p.document.folderPath;
                                         const pageFolder = docFolder.getFolder(page.id);
@@ -1177,8 +1179,10 @@ export async function showImagePopoverMenu(pages: { page: OCRPage; document: OCR
                                     ) => {
                                         const needsCopy = __ANDROID__ && exportDirectory.startsWith(ANDROID_CONTENT);
                                         const page = p.page;
+                                        const passExt = page.pkpass?.passType === 'espass' ? ESPASS_EXT : PKPASS_EXT;
+                                        const mimeType = page.pkpass?.passType === 'espass' ? 'application/vnd.espass-espass' : 'application/vnd.apple.pkpass';
                                         const fileName = page.name ?? p.document.name ?? `${p.document.id}_${page.pkpass_id}`;
-                                        const actualFileName = `${cleanFilename(fileName)}.pkpass`;
+                                        const actualFileName = `${cleanFilename(fileName)}${passExt}`;
                                         const outputZip = needsCopy ? path.join(knownFolders.temp().path, actualFileName) : path.join(exportDirectory, actualFileName);
 
                                         const docFolder = p.document.folderPath;
@@ -1188,7 +1192,7 @@ export async function showImagePopoverMenu(pages: { page: OCRPage; document: OCR
 
                                         if (__ANDROID__ && needsCopy) {
                                             const context = Utils.android.getApplicationContext();
-                                            com.akylas.documentscanner.utils.FileUtils.Companion.copyFileToDocumentFile(context, outputZip, 'application/vnd.apple.pkpass', exportDirectory);
+                                            com.akylas.documentscanner.utils.FileUtils.Companion.copyFileToDocumentFile(context, outputZip, mimeType, exportDirectory);
                                         }
                                     }
                                 );

@@ -6,7 +6,7 @@ import { doInBatch } from '@shared/utils/batch';
 import SqlQuery from 'kiss-orm/dist/Queries/SqlQuery';
 import CrudRepository from 'kiss-orm/dist/Repositories/CrudRepository';
 import { DocFolder, Document, IDocFolder, OCRDocument, OCRPage, Page, Tag } from '~/models/OCRDocument';
-import { PKPass } from '~/models/PKPass';
+import { PKPass, PKPassType } from '~/models/PKPass';
 import { EVENT_DOCUMENT_DELETED, SETTINGS_ROOT_DATA_FOLDER } from '~/utils/constants';
 import { groupByArray } from '@shared/utils';
 import DatabaseInterface from 'kiss-orm/dist/Databases/DatabaseInterface';
@@ -203,11 +203,16 @@ export class PKPassRepository extends BaseRepository<PKPass, PKPass> {
         });
     }
 
+    migrations = {
+        addPassType: sql`ALTER TABLE PKPass ADD COLUMN passType TEXT NOT NULL DEFAULT 'pkpass'`
+    };
+
     async createTables() {
         return this.database.query(sql`
         CREATE TABLE IF NOT EXISTS "PKPass" (
             id TEXT PRIMARY KEY NOT NULL,
             page_id TEXT NOT NULL,
+            passType TEXT NOT NULL DEFAULT 'pkpass',
             passData TEXT NOT NULL,
             images TEXT,
             passJsonPath TEXT,
@@ -225,6 +230,7 @@ export class PKPassRepository extends BaseRepository<PKPass, PKPass> {
             cleanUndefined({
                 id: pkpass.id,
                 page_id: pkpass.page_id,
+                passType: pkpass.passType || PKPassType.PKPass,
                 passData: JSON.stringify(pkpass.passData),
                 images: JSON.stringify(pkpass.images),
                 // passJsonPath: pkpass.passJsonPath,
@@ -261,7 +267,7 @@ export class PKPassRepository extends BaseRepository<PKPass, PKPass> {
 
     async createModelFromAttributes(attributes: any): Promise<PKPass> {
         const { images, passData, ...other } = attributes;
-        const model = new PKPass(attributes.id, attributes.page_id || attributes.document_id); // Support both for migration
+        const model = new PKPass(attributes.id, attributes.page_id || attributes.document_id, attributes.passType || PKPassType.PKPass); // Support both for migration
         Object.assign(model, {
             ...other,
             passData: typeof passData === 'string' ? JSON.parse(passData) : passData,
