@@ -5,7 +5,7 @@ import type { BufferLike } from '~/services/api';
 
 export interface PaperlessServiceContext {
     serverUrl: string;
-    token: string;
+    token?: string;
     username?: string;
     password?: string;
 }
@@ -95,7 +95,7 @@ export async function testPaperlessConnection({ serverUrl, token, username, pass
     try {
         let authToken = token;
         if (!authToken && username && password) {
-            authToken = await acquireToken({ serverUrl, token: undefined }, username, password);
+            authToken = await acquireToken({ serverUrl }, username, password);
         }
         const baseUrl = getBaseUrl(serverUrl);
         const response = await request<PaperlessDocumentListResponse>({
