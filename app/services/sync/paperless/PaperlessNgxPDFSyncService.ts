@@ -6,7 +6,7 @@ import { networkService } from '~/services/api';
 import { DocumentEvents } from '~/services/documents';
 import PDFExportCanvas from '~/services/pdf/PDFExportCanvas';
 import { BasePDFSyncService, BasePDFSyncServiceOptions } from '~/services/sync/BasePDFSyncService';
-import { PaperlessNgxSyncOptions, acquireToken, ensureToken, listDocuments, uploadDocument } from '~/services/sync/paperless/PaperlessNgx';
+import { PaperlessNgxSyncOptions, ensureToken, listDocuments, uploadDocument } from '~/services/sync/paperless/PaperlessNgx';
 import { SERVICES_SYNC_MASK } from '~/services/sync/types';
 import { PDF_EXT } from '~/utils/constants';
 import { getPageColorMatrix } from '~/utils/matrix';
