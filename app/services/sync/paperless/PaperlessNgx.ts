@@ -17,6 +17,9 @@ export interface PaperlessNgxSyncOptions {
     password?: string;
 }
 
+/** Length of the ".pdf" extension string. */
+const PDF_EXT_LEN = 4;
+
 export interface PaperlessDocument {
     id: number;
     title: string;
@@ -52,7 +55,7 @@ function getBaseUrl(serverUrl: string): string {
     return serverUrl.replace(/\/+$/, '');
 }
 
-function getAuthHeaders(token: string): Record<string, string> {
+function getAuthHeaders(token: string | undefined): Record<string, string> {
     if (token) {
         return {
             Authorization: `Token ${token}`
@@ -61,7 +64,7 @@ function getAuthHeaders(token: string): Record<string, string> {
     return {};
 }
 
-export async function makeRequest<T = any>(service: PaperlessServiceContext, endpoint: string, options: Partial<HttpsRequestOptions> = {}) {
+export async function makeRequest<T = any>(service: PaperlessServiceContext, endpoint: string = '', options: Partial<HttpsRequestOptions> = {}) {
     const { headers = {}, ...others } = options;
     const baseUrl = getBaseUrl(service.serverUrl);
 
@@ -211,7 +214,7 @@ export async function uploadDocument(service: PaperlessServiceContext, title: st
         body: [
             {
                 parameterName: 'title',
-                data: title.replace(/\.pdf$/i, ''),
+                data: fileName.slice(0, -PDF_EXT_LEN),
                 contentType: 'text/plain'
             },
             {

@@ -140,7 +140,7 @@ export class PaperlessNgxPDFSyncService extends BasePDFSyncService {
         }
         const localFilePath = path.join(temp, fileName);
         try {
-            const existingPaperlessId: number | undefined = document.extra?.[EXTRA_PAPERLESS_ID_KEY] as number | undefined;
+            const existingPaperlessId = document.extra?.[EXTRA_PAPERLESS_ID_KEY] as number | undefined;
 
             if (existingPaperlessId) {
                 // Document already exists on Paperless — upload a new version
