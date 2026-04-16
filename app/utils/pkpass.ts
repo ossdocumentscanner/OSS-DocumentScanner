@@ -272,8 +272,8 @@ export async function extractAndParsePKPassFile(pkpassFilePath: string, targetFo
             rawJsonContent = await File.fromPath(passJsonPath).readText();
         } else {
             // Look for any .json file in the root of the extracted archive
-            const extractFolder2 = Folder.fromPath(extractPath);
-            const entities = extractFolder2.getEntitiesSync();
+            const passRootFolder = Folder.fromPath(extractPath);
+            const entities = passRootFolder.getEntitiesSync();
             const jsonFile = entities.find((e) => !(e instanceof Folder) && e.name.endsWith('.json'));
             if (!jsonFile) {
                 throw new Error('No JSON descriptor found in pass file');
@@ -283,9 +283,11 @@ export async function extractAndParsePKPassFile(pkpassFilePath: string, targetFo
 
         const rawJson = JSON.parse(rawJsonContent);
 
-        // Detect format: ESpass uses flat `fields` array and lacks PKPass's `formatVersion`
+        // Detect format:
+        // ESpass: lacks PKPass's `formatVersion`, has a flat `fields` array AND an `id` or `type` field
+        // PKPass: has `formatVersion` (required by spec)
         let passData: PKPassData;
-        if (!rawJson.formatVersion && (Array.isArray(rawJson.fields) || rawJson.type)) {
+        if (!rawJson.formatVersion && Array.isArray(rawJson.fields) && (rawJson.id || rawJson.type)) {
             // ESpass format — convert to unified PKPassData
             passType = PKPassType.ESpass;
             passData = convertEspassToPKPassData(rawJson);
