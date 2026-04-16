@@ -267,7 +267,7 @@
     on:close={(e) => onFullCardItemTouch(item, { action: 'up' })}> -->
 <gridlayout {height} width="100%" {...$$restProps}>
     <gridlayout id="cardItemTemplate" class="cardItemTemplate" prop:mainContent {...getItemHolderParams(layout, item, $nbColumns)} on:tap on:longPress>
-        {#if pkPassCell}
+        {#if CARD_APP && pkPassCell}
             <PKPassCardCell {item} {itemWidth} {layout} pkpass={item.doc.pages[0]?.pkpass} />
         {:else}
             <RotableImageView {...getItemRotableImageParams(item)} />
