@@ -74,7 +74,8 @@
     }
 
     function renderFieldLabel(field: PKPassField): string {
-        return field.label ? pkpass.getLocalizedValue(field.label, lang).toUpperCase() + '\n' : '';
+        if (!field) return null;
+        return pkpass.getLocalizedFieldLabel(field, lang).toUpperCase() + '\n';
     }
 
     function getLocalizedText(text: string): string {
@@ -136,7 +137,7 @@
                     fontWeight="bold"
                     horizontalAlignment="left"
                     maxLines={1}
-                    paddingLeft={10  * $fontScale}
+                    paddingLeft={10 * $fontScale}
                     selectable={true}
                     text={orgName}
                     verticalAlignment="center"
@@ -192,7 +193,16 @@
                         </label>
 
                         <!-- Transit icon in center -->
-                        <label class="mdi" col={1} color={labelColor} fontSize={50 * $fontScale} marginLeft={16} marginRight={16} text={transitIcon} textAlignment="center" verticalAlignment="center" />
+                        <label
+                            class="mdi"
+                            col={1}
+                            color={labelColor}
+                            fontSize={50 * $fontScale}
+                            marginLeft={16}
+                            marginRight={16}
+                            text={transitIcon}
+                            textAlignment="center"
+                            verticalAlignment="center" />
 
                         <!-- Right primary field (arrival) -->
                         <label col={2} selectable={true} textAlignment="right">
@@ -305,7 +315,16 @@
             {/if}
 
             {#if pkpass.isVoided()}
-                <label backgroundColor="#ff5252" borderRadius={8} color="#ffffff" fontSize={15 * $fontScale} fontWeight="bold" marginTop={8} padding={12} text={lc('pkpass_voided')} textAlignment="center" />
+                <label
+                    backgroundColor="#ff5252"
+                    borderRadius={8}
+                    color="#ffffff"
+                    fontSize={15 * $fontScale}
+                    fontWeight="bold"
+                    marginTop={8}
+                    padding={12}
+                    text={lc('pkpass_voided')}
+                    textAlignment="center" />
             {/if}
         </stacklayout>
     </scrollview>

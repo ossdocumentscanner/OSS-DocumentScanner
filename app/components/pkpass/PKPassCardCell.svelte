@@ -80,8 +80,7 @@
     // Get formatted field label
     function getFieldLabel(field: any): string {
         if (!field) return null;
-        const label = field.label || field.key;
-        return pkpass.getLocalizedValue(label, lang).toUpperCase() + '\n';
+        return pkpass.getLocalizedFieldLabel(field, lang).toUpperCase() + '\n';
     }
 
     function getLocalizedText(text: string): string {

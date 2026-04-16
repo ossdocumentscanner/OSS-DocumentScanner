@@ -1344,7 +1344,7 @@
 
 <page bind:this={page} id="cardview" actionBarHidden={true} statusBarColor={topBackgroundColor} {statusBarStyle}>
     <gridlayout class="pageContent" backgroundColor={topBackgroundColor} columns={$isLandscape ? 'auto,*' : '*'} rows={$isLandscape ? 'auto,*' : 'auto,auto,*'}>
-        {#if isPKPassDocument}
+        {#if CARD_APP && isPKPassDocument}
             <pager bind:this={pager} items={document.pages} row={2} transformers="zoomOut" on:selectedIndexChange={onSelectedIndex}>
                 <Template let:item>
                     <stacklayout padding="0">

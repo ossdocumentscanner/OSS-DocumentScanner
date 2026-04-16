@@ -216,6 +216,11 @@ export class PKPass extends Observable {
         return this.passData.voided === true;
     }
 
+    getLocalizedFieldLabel(field: any, currentLang: string): string {
+        if (!field) return null;
+        const label = field.label || field.key;
+        return this.getLocalizedValue(label, currentLang);
+    }
     /**
      * Get localized value for a given key based on current app language
      * @param key The key to localize

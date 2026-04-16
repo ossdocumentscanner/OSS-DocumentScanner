@@ -2,9 +2,9 @@ import { lc } from '@nativescript-community/l';
 import { createNativeAttributedString } from '@nativescript-community/text';
 import { Align, Canvas, LayoutAlignment, Paint, Rect, StaticLayout } from '@nativescript-community/ui-canvas';
 import { SVG } from '@nativescript-community/ui-svg/canvas';
-import { Color, File, Folder, ImageSource, PercentLength, Screen, Utils, path } from '@nativescript/core';
+import { Color, File, Folder, ImageSource, PercentLength, Screen, Utils, knownFolders, path } from '@nativescript/core';
 import { generateQRCodeImage, getSVGFromQRCode, getSVGFromQRCodeSync } from 'plugin-nativeprocessor';
-import { unzip } from 'plugin-zip';
+import { unzip, zip } from 'plugin-zip';
 import type { OCRDocument } from '~/models/OCRDocument';
 import { PKBarcodeFormat, PKPass, type PKPassBarcode, type PKPassData, type PKPassField, type PKPassImages, type PKPassStructure, PKPassStyle, PKPassTransitType, PKPassType } from '~/models/PKPass';
 import { CARD_RATIO } from './constants';
@@ -92,7 +92,8 @@ export function convertEspassToPKPassData(espassJson: any): PKPassData {
 
     // Separate visible and hidden fields
     const allFields: any[] = espassJson.fields || [];
-    const visibleFields = allFields.filter((f) => !f.hide);
+    const headerFields = allFields.filter((f) => !!f.header);
+    const visibleFields = allFields.filter((f) => !f.hide && !f.header);
     const hiddenFields = allFields.filter((f) => f.hide);
 
     function toField(f: any, index: number): PKPassField {
@@ -101,18 +102,19 @@ export function convertEspassToPKPassData(espassJson: any): PKPassData {
 
     // Distribute visible fields across sections similar to pkpass conventions
     // Primary (big display): up to 2 fields
-    // Secondary: up to 3 fields
+    // Secondary: up to 4 fields
     // Auxiliary: up to 4 fields
     // Back: hidden fields + overflow
     const primaryFields: PKPassField[] = visibleFields.slice(0, 2).map((f, i) => toField(f, i));
-    const secondaryFields: PKPassField[] = visibleFields.slice(2, 5).map((f, i) => toField(f, i + 2));
-    const auxiliaryFields: PKPassField[] = visibleFields.slice(5, 9).map((f, i) => toField(f, i + 5));
-    const backFields: PKPassField[] = [...visibleFields.slice(9).map((f, i) => toField(f, i + 9)), ...hiddenFields.map((f, i) => toField(f, i + visibleFields.length))];
+    const secondaryFields: PKPassField[] = visibleFields.slice(2, 6).map((f, i) => toField(f, i + 2));
+    const auxiliaryFields: PKPassField[] = visibleFields.slice(6, 10).map((f, i) => toField(f, i + 6));
+    const backFields: PKPassField[] = [...visibleFields.slice(10).map((f, i) => toField(f, i + 10)), ...hiddenFields.map((f, i) => toField(f, i + visibleFields.length))];
 
     // Transit type for boarding passes (ESpass doesn't specify vehicle type, default to Generic)
-    const transitType = style === PKPassStyle.BoardingPass ? PKPassTransitType.Generic : undefined;
+    const transitType = espassJson.transitType ?? (style === PKPassStyle.BoardingPass ? PKPassTransitType.Generic : undefined);
 
     const structure: PKPassStructure = {
+        headerFields: headerFields.length ? headerFields : undefined,
         primaryFields: primaryFields.length ? primaryFields : undefined,
         secondaryFields: secondaryFields.length ? secondaryFields : undefined,
         auxiliaryFields: auxiliaryFields.length ? auxiliaryFields : undefined,
@@ -160,6 +162,7 @@ export function convertEspassToPKPassData(espassJson: any): PKPassData {
         organizationName: espassJson.description || '',
         description: espassJson.description || '',
         backgroundColor,
+        labelColor: espassJson.labelColor,
         barcode,
         locations: locations.length ? locations : undefined,
         expirationDate
@@ -284,7 +287,6 @@ export async function extractAndParsePKPassFile(pkpassFilePath: string, targetFo
             }
             rawJsonContent = await File.fromPath(jsonFile.path).readText();
         }
-
         const rawJson = JSON.parse(rawJsonContent);
 
         // Detect format:
@@ -426,6 +428,162 @@ export function isPKPassFile(filePath: string): boolean {
     // Check file extension — both .pkpass and .espass are supported
     const lower = filePath.toLowerCase();
     return lower.endsWith('.pkpass') || lower.endsWith('.espass');
+}
+
+// ─── ESpass barcode format string ────────────────────────────────────────────
+
+function pkBarcodeFormatToEspass(format: PKBarcodeFormat): string {
+    switch (format) {
+        case PKBarcodeFormat.Aztec:
+            return 'AZTEC';
+        case PKBarcodeFormat.PDF417:
+            return 'PDF417';
+        case PKBarcodeFormat.Code128:
+            return 'CODE128';
+        case PKBarcodeFormat.QR:
+        default:
+            return 'QR';
+    }
+}
+
+// ─── PKPassStyle → ESpass type ───────────────────────────────────────────────
+
+function pkPassStyleToEspassType(style: PKPassStyle): string {
+    switch (style) {
+        case PKPassStyle.BoardingPass:
+            return 'BOARDING';
+        case PKPassStyle.Coupon:
+            return 'COUPON';
+        case PKPassStyle.EventTicket:
+            return 'EVENT';
+        case PKPassStyle.StoreCard:
+            return 'LOYALTY';
+        default:
+            return 'GENERIC';
+    }
+}
+
+/**
+ * Convert the internal (PKPass-normalised) pass data back to the ESpass JSON schema.
+ * Used when the user exports/shares a pass "as ESpass".
+ */
+export function convertPKPassDataToEspassJson(pass: PKPass, lang: string): any {
+    const passData = pass.passData;
+    const structure = pass.getPassStructure();
+    const style = pass.getPassStyle();
+
+    // Flatten all visible fields (primary → secondary → auxiliary → back as hidden)
+    const fields: any[] = [];
+    const addFields = (section: PKPassField[] | undefined, hide: boolean, header: boolean = false) => {
+        (section || []).forEach((f) => {
+            fields.push({ label: pass.getLocalizedFieldLabel(f, lang), value: pass.formatFieldValue(f, lang), hide, ...(header ? { header: true } : {}) });
+        });
+    };
+    addFields(structure?.headerFields, false, true);
+    addFields(structure?.primaryFields, false);
+    addFields(structure?.secondaryFields, false);
+    addFields(structure?.auxiliaryFields, false);
+    addFields(structure?.backFields, true);
+
+    // Barcode
+    const primaryBarcode = pass.getPrimaryBarcode();
+    let barCode: any;
+    if (primaryBarcode) {
+        barCode = {
+            format: pkBarcodeFormatToEspass(primaryBarcode.format),
+            message: primaryBarcode.message,
+            alternative_text: primaryBarcode.altText
+        };
+    }
+
+    // Locations
+    const locations = (passData.locations || []).map((loc) => ({
+        lat: String(loc.latitude),
+        lon: String(loc.longitude),
+        name: loc.relevantText
+    }));
+
+    // Valid timespans from expirationDate; use the pass creation date as a stable `from` value.
+    // createdDate is always set in the PKPass constructor, so the fallback is only a safety net.
+    const validTimespans = passData.expirationDate ? [{ from: new Date(pass.createdDate).toISOString(), to: passData.expirationDate }] : undefined;
+
+    return {
+        id: passData.serialNumber || '',
+        type: pkPassStyleToEspassType(style),
+        description: passData.description || passData.organizationName || '',
+        accentColor: passData.backgroundColor,
+        labelColor: passData.labelColor,
+        creator: passData.teamIdentifier || '',
+        app: 'cardwallet',
+        fields,
+        ...(barCode ? { barCode } : {}),
+        ...(locations.length ? { locations } : {}),
+        ...(validTimespans ? { validTimespans } : {}),
+        ...(style === PKPassStyle.BoardingPass ? { transitType: structure.transitType } : {})
+    };
+}
+
+// ─── Derive the format a pass was originally stored in ───────────────────────
+
+export function getStoredPassFormat(pkpass: PKPass | undefined): PKPassType {
+    return pkpass?.passType === PKPassType.ESpass ? PKPassType.ESpass : PKPassType.PKPass;
+}
+
+// ─── Set of image filenames we expect inside a pass folder ───────────────────
+
+const IMAGE_FILE_SET = new Set(IMAGE_FILES.map((f) => f.toLowerCase()));
+
+/**
+ * Build a pass archive (ZIP) in the requested target format.
+ *
+ * - The `pkpassFolderPath` contains the files that were originally stored when the
+ *   pass was first imported (images + original JSON).
+ * - The `pass` object holds the parsed (normalised) pass data.
+ * - `targetFormat` controls whether the output ZIP should be a .pkpass or .espass.
+ *
+ * The function writes the converted JSON descriptor plus any image files from the
+ * stored folder into a temporary directory, then zips everything to `outputPath`.
+ */
+export async function buildPassArchive(pkpassFolderPath: string, pass: PKPass, targetFormat: PKPassType, outputPath: string, lang: string): Promise<void> {
+    // Create a unique scratch folder inside the temp directory
+    const scratchPath = path.join(knownFolders.temp().path, `_scratch_${Date.now()}`);
+    const scratchFolder = Folder.fromPath(scratchPath);
+
+    try {
+        // Write the JSON descriptor for the target format
+        if (targetFormat === PKPassType.ESpass) {
+            const espassJson = convertPKPassDataToEspassJson(pass, lang);
+            await File.fromPath(path.join(scratchPath, PASS_JSON_FILE)).writeText(JSON.stringify(espassJson), 'UTF-8');
+        } else {
+            // PKPass format: write the normalised PKPassData as pass.json (without private _allLocalizations field)
+            const { _allLocalizations, ...pkpassJson } = pass.passData as any;
+            await File.fromPath(path.join(scratchPath, PASS_JSON_FILE)).writeText(JSON.stringify(pkpassJson), 'UTF-8');
+        }
+
+        // Copy image files from the stored pkpass folder into the scratch folder.
+        // Only copy files whose names are listed in IMAGE_FILES to avoid accidentally
+        // copying the original JSON descriptor (which we have replaced above).
+        if (Folder.exists(pkpassFolderPath)) {
+            const sourceFolder = Folder.fromPath(pkpassFolderPath);
+            const entities = sourceFolder.getEntitiesSync();
+            for (const entity of entities) {
+                const isFile = !(entity instanceof Folder);
+                if (isFile && IMAGE_FILE_SET.has(entity.name.toLowerCase())) {
+                    await File.fromPath(entity.path).copy(path.join(scratchPath, entity.name));
+                }
+            }
+        }
+
+        // Zip the scratch folder into the output path
+        await zip({ directory: scratchPath, archive: outputPath, keepParent: false });
+    } finally {
+        // Clean up scratch folder
+        try {
+            if (Folder.exists(scratchPath)) {
+                await scratchFolder.remove();
+            }
+        } catch (_) {}
+    }
 }
 
 export function getFieldTextAlignment(field: PKPassField, defaultValue = 'left'): 'left' | 'right' | 'center' | 'initial' {
