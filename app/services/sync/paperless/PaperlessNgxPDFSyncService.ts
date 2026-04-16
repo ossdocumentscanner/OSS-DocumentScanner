@@ -19,6 +19,7 @@ const EXTRA_PAPERLESS_ID_KEY = 'paperless_pdf_id';
 
 /** Polling interval in milliseconds. */
 const POLL_INTERVAL_MS = 2000;
+const MAX_POLL_TIME_MS = 20000;
 
 export class PaperlessNgxPDFSyncService extends BasePDFSyncService {
     shouldSync(force?: boolean, event?: DocumentEvents) {
@@ -41,7 +42,6 @@ export class PaperlessNgxPDFSyncService extends BasePDFSyncService {
         if (config) {
             const service = PaperlessNgxPDFSyncService.getOrCreateInstance();
             Object.assign(service, config);
-            DEV_LOG && console.log('PaperlessNgxPDFSyncService', 'start', JSON.stringify({ ...config, token: config.token ? '[redacted]' : undefined }), service.autoSync);
             return service;
         }
     }
@@ -82,15 +82,16 @@ export class PaperlessNgxPDFSyncService extends BasePDFSyncService {
             this.startPolling();
         });
     }
-
+    startPollingStartTime;
     private startPolling() {
         if (!this.pollingPromise) {
+            this.startPollingStartTime = Date.now();
             this.pollingPromise = this.pollLoop();
         }
     }
 
     private async pollLoop() {
-        while (this.pendingTasks.size > 0) {
+        while (this.pendingTasks.size > 0 && Date.now() - this.startPollingStartTime < MAX_POLL_TIME_MS) {
             await new Promise<void>((r) => setTimeout(r, POLL_INTERVAL_MS));
             try {
                 const tasks: PaperlessTask[] = await fetchTasks(this);
@@ -140,7 +141,7 @@ export class PaperlessNgxPDFSyncService extends BasePDFSyncService {
         }
         const localFilePath = path.join(temp, fileName);
         try {
-            const existingPaperlessId = document.extra?.[EXTRA_PAPERLESS_ID_KEY] as number | undefined;
+            const existingPaperlessId = document.extra?.[EXTRA_PAPERLESS_ID_KEY] as number;
 
             if (existingPaperlessId) {
                 // Document already exists on Paperless — upload a new version

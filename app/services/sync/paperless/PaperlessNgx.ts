@@ -67,7 +67,6 @@ function getAuthHeaders(token: string | undefined): Record<string, string> {
 export async function makeRequest<T = any>(service: PaperlessServiceContext, endpoint: string = '', options: Partial<HttpsRequestOptions> = {}) {
     const { headers = {}, ...others } = options;
     const baseUrl = getBaseUrl(service.serverUrl);
-
     const requestOptions = {
         url: `${baseUrl}${endpoint}`,
         headers: {
@@ -107,7 +106,7 @@ export async function ensureToken(service: PaperlessServiceContext) {
  * Test the connection to a Paperless-ngx server.
  * Returns true if successful, false otherwise.
  */
-export async function testPaperlessConnection({ serverUrl, token, username, password }: PaperlessNgxSyncOptions): Promise<boolean> {
+export async function testPaperlessConnection({ password, serverUrl, token, username }: PaperlessNgxSyncOptions): Promise<boolean> {
     try {
         let authToken = token;
         if (!authToken && username && password) {
@@ -225,5 +224,5 @@ export async function uploadDocument(service: PaperlessServiceContext, title: st
             }
         ]
     });
-    return response.text();
+    return (await response.text()).replaceAll('"', '');
 }

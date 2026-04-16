@@ -174,6 +174,11 @@ export class SyncService extends BaseWorkerHandler<SyncWorker> {
     sendImageEvent(event: DocumentPagesAddedEventData) {
         DEV_LOG && console.log('Sync', 'sendImageEvent');
         // only used for image sync
+        this.syncDocumentsInternal({ event, type: SyncType.IMAGE, fromEvent: event.eventName });
+    }
+    sendImagesEvent(event: DocumentPagesAddedEventData) {
+        DEV_LOG && console.log('Sync', 'sendImagesEvent');
+        // only used for image sync
         this.syncDocumentsInternal({ event, type: SyncType.IMAGE | SyncType.PDF, fromEvent: event.eventName });
     }
     sendDataEvent(event: FolderUpdatedEventData) {
@@ -239,7 +244,7 @@ export class SyncService extends BaseWorkerHandler<SyncWorker> {
             documentsService.on(EVENT_DOCUMENT_UPDATED, this.onDocumentUpdated, this);
             documentsService.on(EVENT_DOCUMENT_DELETED, this.onDocumentDeleted, this);
             documentsService.on(EVENT_DOCUMENT_PAGE_UPDATED, this.sendImageEvent, this);
-            documentsService.on(EVENT_DOCUMENT_PAGES_ADDED, this.sendImageEvent, this);
+            documentsService.on(EVENT_DOCUMENT_PAGES_ADDED, this.sendImagesEvent, this);
             documentsService.on(EVENT_DOCUMENT_MOVED_FOLDER, this.sendDataEvent, this);
             documentsService.on(EVENT_FOLDER_UPDATED, this.sendDataEvent, this);
             documentsService.on(EVENT_FOLDER_ADDED, this.sendDataEvent, this);
