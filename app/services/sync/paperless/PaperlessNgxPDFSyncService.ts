@@ -88,6 +88,14 @@ export class PaperlessNgxPDFSyncService extends BasePDFSyncService {
             await exporter.export({ pages: pages.map((page) => ({ page, document })), folder: temp, filename: fileName, compress: true, options: this.exportOptions });
         }
         const localFilePath = path.join(temp, fileName);
-        await uploadDocument({ serverUrl: this.serverUrl, token: this.token }, fileName, File.fromPath(localFilePath));
+        try {
+            await uploadDocument({ serverUrl: this.serverUrl, token: this.token }, fileName, File.fromPath(localFilePath));
+        } finally {
+            try {
+                File.fromPath(localFilePath).remove();
+            } catch (_) {
+                // ignore cleanup errors
+            }
+        }
     }
 }

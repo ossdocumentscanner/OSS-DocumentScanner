@@ -28,15 +28,10 @@
 
             // If only username/password provided, acquire a token first
             if (!data.token && data.username && data.password) {
-                try {
-                    const acquiredToken = await acquireToken(data.serverUrl, data.username, data.password);
-                    $store.token = acquiredToken;
-                    // Clear password from store so it is not persisted
-                    $store.password = '';
-                } catch (e) {
-                    testConnectionSuccess = -1;
-                    throw e;
-                }
+                const acquiredToken = await acquireToken(data.serverUrl, data.username, data.password);
+                $store.token = acquiredToken;
+                // Clear password from store so it is not persisted; the token is used going forward
+                $store.password = '';
             }
 
             const result = await testPaperlessConnection(get(store));
