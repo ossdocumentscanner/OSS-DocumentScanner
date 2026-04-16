@@ -496,9 +496,10 @@ export function convertPKPassDataToEspassJson(pass: PKPass): any {
         name: loc.relevantText
     }));
 
-    // Valid timespans from expirationDate; use pass creation date as the stable `from` value
+    // Valid timespans from expirationDate; use the pass creation date as a stable `from` value.
+    // createdDate is always set in the PKPass constructor, so the fallback is only a safety net.
     const validTimespans = passData.expirationDate
-        ? [{ from: new Date(pass.createdDate || Date.now()).toISOString(), to: passData.expirationDate }]
+        ? [{ from: new Date(pass.createdDate).toISOString(), to: passData.expirationDate }]
         : undefined;
 
     return {
@@ -559,7 +560,8 @@ export async function buildPassArchive(pkpassFolderPath: string, pass: PKPass, t
             const sourceFolder = Folder.fromPath(pkpassFolderPath);
             const entities = sourceFolder.getEntitiesSync();
             for (const entity of entities) {
-                if (!(entity instanceof Folder) && IMAGE_FILE_SET.has(entity.name.toLowerCase())) {
+                const isFile = !(entity instanceof Folder);
+                if (isFile && IMAGE_FILE_SET.has(entity.name.toLowerCase())) {
                     await File.fromPath(entity.path).copy(path.join(scratchPath, entity.name));
                 }
             }
