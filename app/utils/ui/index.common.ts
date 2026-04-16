@@ -107,7 +107,7 @@ import { colors, fontScale, screenWidthDips } from '~/variables';
 import { MatricesTypes, Matrix } from '../color_matrix';
 import { cleanFilename, saveImage } from '../utils';
 import { importPKPassFiles } from '~/utils/pkpass-import';
-import { buildPassArchive } from '~/utils/pkpass';
+import { buildPassArchive, getStoredPassFormat } from '~/utils/pkpass';
 import { PKPassType } from '~/models/PKPass';
 import { zip } from 'plugin-zip';
 
@@ -1140,8 +1140,12 @@ export async function showImagePopoverMenu(pages: { page: OCRPage; document: OCR
                         case 'share_pkpass': {
                             if (CARD_APP) {
                                 await closePopover();
-                                const targetFormat: PKPassType =
-                                    item.id === 'share_as_espass' ? PKPassType.ESpass : item.id === 'share_as_pkpass' ? PKPassType.PKPass : null;
+                                let targetFormat: PKPassType;
+                                if (item.id === 'share_as_espass') {
+                                    targetFormat = PKPassType.ESpass;
+                                } else if (item.id === 'share_as_pkpass') {
+                                    targetFormat = PKPassType.PKPass;
+                                } // else null — will fall back to stored format per-pass below
                                 const files = [];
                                 await doInBatch(
                                     pages.filter((p) => p.page.pkpass),
@@ -1153,7 +1157,7 @@ export async function showImagePopoverMenu(pages: { page: OCRPage; document: OCR
                                         index
                                     ) => {
                                         const page = p.page;
-                                        const format = targetFormat ?? (page.pkpass?.passType === PKPassType.ESpass ? PKPassType.ESpass : PKPassType.PKPass);
+                                        const format = targetFormat ?? getStoredPassFormat(page.pkpass);
                                         const passExt = format === PKPassType.ESpass ? ESPASS_EXT : PKPASS_EXT;
                                         const fileName = page.name ?? p.document.name ?? `${p.document.id}_${page.pkpass_id}`;
                                         const outputZip = path.join(knownFolders.temp().path, `${cleanFilename(fileName)}${passExt}`);
@@ -1162,8 +1166,7 @@ export async function showImagePopoverMenu(pages: { page: OCRPage; document: OCR
                                         const pageFolder = docFolder.getFolder(page.id);
                                         const pkpassFolderPath = pageFolder.getFolder('pkpass').path;
 
-                                        const needsConversion = page.pkpass && format !== (page.pkpass?.passType === PKPassType.ESpass ? PKPassType.ESpass : PKPassType.PKPass);
-                                        if (needsConversion) {
+                                        if (format !== getStoredPassFormat(page.pkpass)) {
                                             await buildPassArchive(pkpassFolderPath, page.pkpass, format, outputZip);
                                         } else {
                                             await zip({ directory: pkpassFolderPath, archive: outputZip, keepParent: false });
@@ -1193,8 +1196,12 @@ export async function showImagePopoverMenu(pages: { page: OCRPage; document: OCR
                                     }
                                 }
                                 await closePopover();
-                                const targetFormat: PKPassType =
-                                    item.id === 'export_as_espass' ? PKPassType.ESpass : item.id === 'export_as_pkpass' ? PKPassType.PKPass : null;
+                                let targetFormat: PKPassType;
+                                if (item.id === 'export_as_espass') {
+                                    targetFormat = PKPassType.ESpass;
+                                } else if (item.id === 'export_as_pkpass') {
+                                    targetFormat = PKPassType.PKPass;
+                                } // else null — will fall back to stored format per-pass below
                                 await doInBatch(
                                     pages.filter((p) => p.page.pkpass),
                                     async (
@@ -1206,7 +1213,7 @@ export async function showImagePopoverMenu(pages: { page: OCRPage; document: OCR
                                     ) => {
                                         const needsCopy = __ANDROID__ && exportDirectory.startsWith(ANDROID_CONTENT);
                                         const page = p.page;
-                                        const format = targetFormat ?? (page.pkpass?.passType === PKPassType.ESpass ? PKPassType.ESpass : PKPassType.PKPass);
+                                        const format = targetFormat ?? getStoredPassFormat(page.pkpass);
                                         const passExt = format === PKPassType.ESpass ? ESPASS_EXT : PKPASS_EXT;
                                         const mimeType = format === PKPassType.ESpass ? 'application/vnd.espass-espass' : 'application/vnd.apple.pkpass';
                                         const fileName = page.name ?? p.document.name ?? `${p.document.id}_${page.pkpass_id}`;
@@ -1217,8 +1224,7 @@ export async function showImagePopoverMenu(pages: { page: OCRPage; document: OCR
                                         const pageFolder = docFolder.getFolder(page.id);
                                         const pkpassFolderPath = pageFolder.getFolder('pkpass').path;
 
-                                        const needsConversion = page.pkpass && format !== (page.pkpass?.passType === PKPassType.ESpass ? PKPassType.ESpass : PKPassType.PKPass);
-                                        if (needsConversion) {
+                                        if (format !== getStoredPassFormat(page.pkpass)) {
                                             await buildPassArchive(pkpassFolderPath, page.pkpass, format, outputZip);
                                         } else {
                                             await zip({ directory: pkpassFolderPath, archive: outputZip, keepParent: false });

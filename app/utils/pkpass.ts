@@ -496,8 +496,10 @@ export function convertPKPassDataToEspassJson(pass: PKPass): any {
         name: loc.relevantText
     }));
 
-    // Valid timespans from expirationDate
-    const validTimespans = passData.expirationDate ? [{ from: new Date().toISOString(), to: passData.expirationDate }] : undefined;
+    // Valid timespans from expirationDate; use pass creation date as the stable `from` value
+    const validTimespans = passData.expirationDate
+        ? [{ from: new Date(pass.createdDate || Date.now()).toISOString(), to: passData.expirationDate }]
+        : undefined;
 
     return {
         id: passData.serialNumber || '',
@@ -512,6 +514,16 @@ export function convertPKPassDataToEspassJson(pass: PKPass): any {
         ...(validTimespans ? { validTimespans } : {})
     };
 }
+
+// ─── Derive the format a pass was originally stored in ───────────────────────
+
+export function getStoredPassFormat(pkpass: PKPass | undefined): PKPassType {
+    return pkpass?.passType === PKPassType.ESpass ? PKPassType.ESpass : PKPassType.PKPass;
+}
+
+// ─── Set of image filenames we expect inside a pass folder ───────────────────
+
+const IMAGE_FILE_SET = new Set(IMAGE_FILES.map((f) => f.toLowerCase()));
 
 /**
  * Build a pass archive (ZIP) in the requested target format.
@@ -540,17 +552,15 @@ export async function buildPassArchive(pkpassFolderPath: string, pass: PKPass, t
             File.fromPath(path.join(scratchPath, PASS_JSON_FILE)).writeTextSync(JSON.stringify(pkpassJson, null, 2));
         }
 
-        // Copy image files from the stored pkpass folder into the scratch folder
+        // Copy image files from the stored pkpass folder into the scratch folder.
+        // Only copy files whose names are listed in IMAGE_FILES to avoid accidentally
+        // copying the original JSON descriptor (which we have replaced above).
         if (Folder.exists(pkpassFolderPath)) {
             const sourceFolder = Folder.fromPath(pkpassFolderPath);
             const entities = sourceFolder.getEntitiesSync();
             for (const entity of entities) {
-                // Only copy known image files (skip JSON descriptor — we wrote our own above)
-                if (!(entity instanceof Folder) && entity.name.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
-                    const destPath = path.join(scratchPath, entity.name);
-                    const src = File.fromPath(entity.path);
-                    const dst = File.fromPath(destPath);
-                    dst.writeSync(src.readSync());
+                if (!(entity instanceof Folder) && IMAGE_FILE_SET.has(entity.name.toLowerCase())) {
+                    await File.fromPath(entity.path).copy(path.join(scratchPath, entity.name));
                 }
             }
         }
