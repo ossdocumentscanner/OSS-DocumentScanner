@@ -2,9 +2,9 @@ import { lc } from '@nativescript-community/l';
 import { createNativeAttributedString } from '@nativescript-community/text';
 import { Align, Canvas, LayoutAlignment, Paint, Rect, StaticLayout } from '@nativescript-community/ui-canvas';
 import { SVG } from '@nativescript-community/ui-svg/canvas';
-import { Color, File, Folder, ImageSource, PercentLength, Screen, Utils, path } from '@nativescript/core';
+import { Color, File, Folder, ImageSource, PercentLength, Screen, Utils, knownFolders, path } from '@nativescript/core';
 import { generateQRCodeImage, getSVGFromQRCode, getSVGFromQRCodeSync } from 'plugin-nativeprocessor';
-import { unzip } from 'plugin-zip';
+import { unzip, zip } from 'plugin-zip';
 import type { OCRDocument } from '~/models/OCRDocument';
 import { PKBarcodeFormat, PKPass, PKPassType, type PKPassBarcode, type PKPassData, type PKPassField, type PKPassImages, type PKPassStructure, PKPassStyle, PKPassTransitType } from '~/models/PKPass';
 import { CARD_RATIO } from './constants';
@@ -422,6 +422,149 @@ export function isPKPassFile(filePath: string): boolean {
     // Check file extension — both .pkpass and .espass are supported
     const lower = filePath.toLowerCase();
     return lower.endsWith('.pkpass') || lower.endsWith('.espass');
+}
+
+// ─── ESpass barcode format string ────────────────────────────────────────────
+
+function pkBarcodeFormatToEspass(format: PKBarcodeFormat): string {
+    switch (format) {
+        case PKBarcodeFormat.Aztec:
+            return 'AZTEC';
+        case PKBarcodeFormat.PDF417:
+            return 'PDF417';
+        case PKBarcodeFormat.Code128:
+            return 'CODE128';
+        case PKBarcodeFormat.QR:
+        default:
+            return 'QR';
+    }
+}
+
+// ─── PKPassStyle → ESpass type ───────────────────────────────────────────────
+
+function pkPassStyleToEspassType(style: PKPassStyle): string {
+    switch (style) {
+        case PKPassStyle.BoardingPass:
+            return 'BOARDING';
+        case PKPassStyle.Coupon:
+            return 'COUPON';
+        case PKPassStyle.EventTicket:
+            return 'EVENT';
+        case PKPassStyle.StoreCard:
+            return 'LOYALTY';
+        default:
+            return 'GENERIC';
+    }
+}
+
+/**
+ * Convert the internal (PKPass-normalised) pass data back to the ESpass JSON schema.
+ * Used when the user exports/shares a pass "as ESpass".
+ */
+export function convertPKPassDataToEspassJson(pass: PKPass): any {
+    const passData = pass.passData;
+    const structure = pass.getPassStructure();
+    const style = pass.getPassStyle();
+
+    // Flatten all visible fields (primary → secondary → auxiliary → back as hidden)
+    const fields: any[] = [];
+    const addFields = (section: PKPassField[] | undefined, hide: boolean) => {
+        (section || []).forEach((f) => {
+            fields.push({ label: f.label || f.key, value: String(f.value), hide });
+        });
+    };
+    addFields(structure?.primaryFields, false);
+    addFields(structure?.secondaryFields, false);
+    addFields(structure?.auxiliaryFields, false);
+    addFields(structure?.backFields, true);
+
+    // Barcode
+    const primaryBarcode = pass.getPrimaryBarcode();
+    let barCode: any;
+    if (primaryBarcode) {
+        barCode = {
+            format: pkBarcodeFormatToEspass(primaryBarcode.format),
+            message: primaryBarcode.message,
+            alternative_text: primaryBarcode.altText
+        };
+    }
+
+    // Locations
+    const locations = (passData.locations || []).map((loc) => ({
+        lat: String(loc.latitude),
+        lon: String(loc.longitude),
+        name: loc.relevantText
+    }));
+
+    // Valid timespans from expirationDate
+    const validTimespans = passData.expirationDate ? [{ from: new Date().toISOString(), to: passData.expirationDate }] : undefined;
+
+    return {
+        id: passData.serialNumber || '',
+        type: pkPassStyleToEspassType(style),
+        description: passData.description || passData.organizationName || '',
+        accentColor: passData.backgroundColor,
+        creator: passData.teamIdentifier || '',
+        app: 'cardwallet',
+        fields,
+        ...(barCode ? { barCode } : {}),
+        ...(locations.length ? { locations } : {}),
+        ...(validTimespans ? { validTimespans } : {})
+    };
+}
+
+/**
+ * Build a pass archive (ZIP) in the requested target format.
+ *
+ * - The `pkpassFolderPath` contains the files that were originally stored when the
+ *   pass was first imported (images + original JSON).
+ * - The `pass` object holds the parsed (normalised) pass data.
+ * - `targetFormat` controls whether the output ZIP should be a .pkpass or .espass.
+ *
+ * The function writes the converted JSON descriptor plus any image files from the
+ * stored folder into a temporary directory, then zips everything to `outputPath`.
+ */
+export async function buildPassArchive(pkpassFolderPath: string, pass: PKPass, targetFormat: PKPassType, outputPath: string): Promise<void> {
+    // Create a unique scratch folder inside the temp directory
+    const scratchPath = path.join(knownFolders.temp().path, `_scratch_${Date.now()}`);
+    const scratchFolder = Folder.fromPath(scratchPath);
+
+    try {
+        // Write the JSON descriptor for the target format
+        if (targetFormat === PKPassType.ESpass) {
+            const espassJson = convertPKPassDataToEspassJson(pass);
+            File.fromPath(path.join(scratchPath, PASS_JSON_FILE)).writeTextSync(JSON.stringify(espassJson, null, 2));
+        } else {
+            // PKPass format: write the normalised PKPassData as pass.json (without private _allLocalizations field)
+            const { _allLocalizations, ...pkpassJson } = pass.passData as any;
+            File.fromPath(path.join(scratchPath, PASS_JSON_FILE)).writeTextSync(JSON.stringify(pkpassJson, null, 2));
+        }
+
+        // Copy image files from the stored pkpass folder into the scratch folder
+        if (Folder.exists(pkpassFolderPath)) {
+            const sourceFolder = Folder.fromPath(pkpassFolderPath);
+            const entities = sourceFolder.getEntitiesSync();
+            for (const entity of entities) {
+                // Only copy known image files (skip JSON descriptor — we wrote our own above)
+                if (!(entity instanceof Folder) && entity.name.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
+                    const destPath = path.join(scratchPath, entity.name);
+                    const src = File.fromPath(entity.path);
+                    const dst = File.fromPath(destPath);
+                    dst.writeSync(src.readSync());
+                }
+            }
+        }
+
+        // Zip the scratch folder into the output path
+        await zip({ directory: scratchPath, archive: outputPath, keepParent: false });
+    } finally {
+        // Clean up scratch folder
+        try {
+            if (Folder.exists(scratchPath)) {
+                await scratchFolder.remove();
+            }
+        } catch (_) {}
+    }
 }
 
 export function getFieldTextAlignment(field: PKPassField, defaultValue = 'left'): 'left' | 'right' | 'center' | 'initial' {
