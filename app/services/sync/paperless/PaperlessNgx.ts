@@ -28,6 +28,19 @@ export interface PaperlessDocument {
     archived_file_name?: string;
 }
 
+export type PaperlessTaskStatus = 'FAILURE' | 'PENDING' | 'RECEIVED' | 'RETRY' | 'REVOKED' | 'STARTED' | 'SUCCESS';
+
+export interface PaperlessTask {
+    task_id: string;
+    task_file_name?: string;
+    date_done?: string;
+    type?: string;
+    status: PaperlessTaskStatus;
+    result?: string;
+    acknowledged?: boolean;
+    related_document?: number;
+}
+
 export interface PaperlessDocumentListResponse {
     count: number;
     next: string | null;
@@ -136,6 +149,50 @@ export async function listDocuments(service: PaperlessServiceContext): Promise<P
         nextUrl = data.next;
     }
     return results;
+}
+
+/**
+ * Fetch task status list from Paperless-ngx.
+ * GET /api/tasks/ returns all recent tasks.
+ */
+export async function fetchTasks(service: PaperlessServiceContext): Promise<PaperlessTask[]> {
+    await ensureToken(service);
+    const response = await makeRequest<PaperlessTask[]>(service, '/api/tasks/', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+    return response.json();
+}
+
+/**
+ * Upload a new version of an existing Paperless-ngx document.
+ * POST /api/documents/{id}/update_version/
+ */
+export async function updateDocumentVersion(service: PaperlessServiceContext, paperlessDocId: number, title: string, fileData: File | BufferLike | string): Promise<void> {
+    await ensureToken(service);
+    const fileName = title.endsWith('.pdf') ? title : `${title}.pdf`;
+
+    await makeRequest<void>(service, `/api/documents/${paperlessDocId}/update_version/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        },
+        body: [
+            {
+                parameterName: 'version_label',
+                data: new Date().toISOString(),
+                contentType: 'text/plain'
+            },
+            {
+                parameterName: 'document',
+                fileName,
+                contentType: 'application/pdf',
+                data: fileData
+            }
+        ]
+    });
 }
 
 /**
