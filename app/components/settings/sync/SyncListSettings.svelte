@@ -31,10 +31,12 @@
     import type WebdavDataSyncSettings__SvelteComponent_ from '~/components/settings/sync/webdav/WebdavDataSyncSettings.svelte';
     import type WebdavImageSyncSettings__SvelteComponent_ from '~/components/settings/sync/webdav/WebdavImageSyncSettings.svelte';
     import type WebdavPDFSyncSettings__SvelteComponent_ from '~/components/settings/sync/webdav/WebdavPDFSyncSettings.svelte';
+    import type PaperlessNgxPDFSyncSettings__SvelteComponent_ from '~/components/settings/sync/paperless/PaperlessNgxPDFSyncSettings.svelte';
     import { BaseDataSyncServiceOptions } from '~/services/sync/BaseDataSyncService';
     import { BaseSyncServiceOptions } from '~/services/sync/BaseSyncService';
     import { GoogleDriveSyncOptions } from '~/services/sync/gdrive/GoogleDrive';
     import { OneDriveSyncOptions } from '~/services/sync/onedrive/OneDrive';
+    import type { PaperlessNgxSyncOptions } from '~/services/sync/paperless/PaperlessNgx';
     interface SettingsComponentReturnType {
         [SyncTypes.folder_image]: typeof FolderImageSyncSettings__SvelteComponent_;
         [SyncTypes.folder_pdf]: typeof FolderPDFSyncSettings__SvelteComponent_;
@@ -47,6 +49,7 @@
         [SyncTypes.gdrive_data]: typeof GoogleDriveDataSyncSettings__SvelteComponent_;
         [SyncTypes.gdrive_image]: typeof GoogleDriveImageSyncSettings__SvelteComponent_;
         [SyncTypes.gdrive_pdf]: typeof GoogleDrivePDFSyncSettings__SvelteComponent_;
+        [SyncTypes.paperless_pdf]: typeof PaperlessNgxPDFSyncSettings__SvelteComponent_;
     }
     async function getSettingsComponent<T extends SyncTypes>(syncType: T): Promise<SettingsComponentReturnType[T]> {
         switch (syncType) {
@@ -72,6 +75,8 @@
                 return (await import('~/components/settings/sync/gdrive/GoogleDriveImageSyncSettings.svelte')).default as any;
             case 'gdrive_pdf':
                 return (await import('~/components/settings/sync/gdrive/GoogleDrivePDFSyncSettings.svelte')).default as any;
+            case 'paperless_pdf':
+                return (await import('~/components/settings/sync/paperless/PaperlessNgxPDFSyncSettings.svelte')).default as any;
         }
     }
 </script>
@@ -181,6 +186,21 @@
                         fullscreen: true,
                         props: {
                             data: item as BaseDataSyncServiceOptions & OneDriveSyncOptions
+                        }
+                    });
+                    if (result) {
+                        configToUpdate = result;
+                    }
+                    break;
+                }
+                case SyncTypes.paperless_pdf: {
+                    const type = item.type;
+                    const page = await getSettingsComponent(type);
+                    const result: BaseSyncServiceOptions & PaperlessNgxSyncOptions = await showModal({
+                        page,
+                        fullscreen: true,
+                        props: {
+                            data: item as BaseSyncServiceOptions & PaperlessNgxSyncOptions
                         }
                     });
                     if (result) {
@@ -311,6 +331,20 @@
                                 }
                                 break;
                             }
+                            case SyncTypes.paperless_pdf: {
+                                const page = await getSettingsComponent(SyncTypes.paperless_pdf);
+                                const result: BaseSyncServiceOptions & PaperlessNgxSyncOptions = await showModal({
+                                    page,
+                                    fullscreen: true,
+                                    props: {
+                                        data
+                                    }
+                                });
+                                if (result) {
+                                    configToAdd = result;
+                                }
+                                break;
+                            }
                         }
                         if (configToAdd) {
                             const data = syncService.addService(selection?.data, configToAdd);
@@ -343,6 +377,18 @@
             case 'onedrive_pdf':
             case 'onedrive_image':
                 return 'OneDrive';
+            case 'paperless_pdf': {
+                const serverUrl = (item as BaseSyncServiceOptions & PaperlessNgxSyncOptions).serverUrl;
+                if (serverUrl) {
+                    try {
+                        const url = serverUrl.startsWith('http') ? serverUrl : 'https://' + serverUrl;
+                        return result + url.split('//')[1].split('/')[0];
+                    } catch (e) {
+                        return result + serverUrl;
+                    }
+                }
+                return 'Paperless-ngx';
+            }
             case 'webdav_data':
             case 'webdav_pdf':
             case 'webdav_image':

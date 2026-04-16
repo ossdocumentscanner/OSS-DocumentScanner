@@ -64,7 +64,8 @@ export const SERVICES_SYNC_TITLES: { [key in SYNC_TYPES]: string } = {
     gdrive_data: 'Google Drive',
     onedrive_image: 'OneDrive',
     onedrive_pdf: 'OneDrive',
-    onedrive_data: 'OneDrive'
+    onedrive_data: 'OneDrive',
+    paperless_pdf: 'Paperless-ngx'
 };
 
 export interface SyncStateEventData extends EventData {
