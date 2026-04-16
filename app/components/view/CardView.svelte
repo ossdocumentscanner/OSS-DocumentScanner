@@ -300,6 +300,13 @@
     function onSelectedIndex(event) {
         currentQRCodeIndex = event.object.selectedIndex;
     }
+    function geAllPages() {
+        const selected: { page: OCRPage; document: OCRDocument }[] = [];
+        items.forEach((d, index) => {
+            selected.push({ page: d.page, document });
+        });
+        return selected;
+    }
     function getSelectedPages() {
         const selected: { page: OCRPage; document: OCRDocument }[] = [];
         items.forEach((d, index) => {
@@ -770,6 +777,7 @@
                 onClose: async (item) => {
                     try {
                         let result;
+                        DEV_LOG && console.log('item.id', item.id);
                         switch (item.id) {
                             case 'share':
                                 result = await showImageExportPopover(event);
@@ -823,26 +831,26 @@
         } else {
             // Filter options based on PKPass document
 
-            const allOptions = [
-                { id: 'rename', name: lc('rename'), icon: 'mdi-rename' },
-                { id: 'select_all', name: lc('select_all'), icon: 'mdi-select-all' },
-                { id: 'reorder', name: lc('reorder_pages'), icon: 'mdi-reorder-horizontal' }
-            ] as any[];
+            const allOptions = [{ id: 'rename', name: lc('rename'), icon: 'mdi-rename' }] as any[];
 
             if (!isPKPassDocument) {
                 if (hasImages) {
                     allOptions.push(
                         ...[
+                            { id: 'select_all', name: lc('select_all'), icon: 'mdi-select-all' },
+                            { id: 'reorder', name: lc('reorder_pages'), icon: 'mdi-reorder-horizontal' },
                             { id: 'transform', name: lc('transform_images'), icon: 'mdi-auto-fix' },
                             { id: 'ocr', name: lc('ocr_document'), icon: 'mdi-text-recognition' }
                         ]
                     );
                 }
+            } else {
+                allOptions.push({ id: 'share', name: lc('share_images'), icon: 'mdi-share-variant' });
             }
             allOptions.push(...[{ id: 'delete', name: lc('delete'), icon: 'mdi-delete', color: colorError }]);
 
             // For PKPass documents, only allow delete (of the whole document)
-            const options = new ObservableArray(isPKPassDocument ? allOptions.filter((opt) => opt.id === 'delete') : allOptions);
+            const options = new ObservableArray(allOptions);
             return showPopoverMenu({
                 options,
                 anchor: event.object,
@@ -852,6 +860,9 @@
                     switch (item.id) {
                         case 'rename':
                             editingTitle = true;
+                            break;
+                        case 'share':
+                            await showImagePopoverMenu(geAllPages(), event.object);
                             break;
                         case 'select_all':
                             selectAll();
