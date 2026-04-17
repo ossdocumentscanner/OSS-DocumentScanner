@@ -52,26 +52,6 @@ export function findArrayDiffs<S, T>(array1: S[], array2: T[], compare: (a: S, b
     };
 }
 
-export const SERVICES_SYNC_ICONS_COLORS: { [key: string]: { icon: string; color?: string; fontFamily?: string } } = {
-    webdav: { icon: 'app-webdav', color: '#347df0', fontFamily: 'app' },
-    gdrive: { icon: 'app-gdrive', color: '#f7b403', fontFamily: 'app' },
-    onedrive: { icon: 'app-onedrive', color: '#28a3e4', fontFamily: 'app' },
-    folder: { icon: 'mdi-folder' }
-};
-export const SERVICES_SYNC_TITLES: { [key in SYNC_TYPES]: string } = {
-    webdav_image: lc('webdav_server'),
-    webdav_pdf: lc('webdav_server'),
-    webdav_data: lc('webdav_server'),
-    folder_image: lc('local_folder'),
-    folder_pdf: lc('local_folder'),
-    gdrive_image: 'Google Drive',
-    gdrive_pdf: 'Google Drive',
-    gdrive_data: 'Google Drive',
-    onedrive_image: 'OneDrive',
-    onedrive_pdf: 'OneDrive',
-    onedrive_data: 'OneDrive'
-};
-
 export interface SyncStateEventData extends EventData {
     state: 'finished' | 'running';
     progress?: {

@@ -61,8 +61,6 @@ export const SERVICES_TYPE_MAP: { [key in SYNC_TYPES]: typeof BaseSyncService } 
 };
 
 const TAG = '[SyncWorker]';
-const OLD_SETTINGS_KEY = 'webdav_config';
-DEV_LOG && console.log(TAG, 'main');
 
 function findArrayDiffs<S, T>(array1: S[], array2: T[], compare: (a: S, b: T) => boolean) {
     const union: S[] = [];
@@ -343,7 +341,6 @@ export default class SyncWorker extends BaseWorker {
                             }
                         }
                         ApplicationSettings.remove(deleteKey);
-
 
                         for (let index = 0; index < toBeSyncDocuments.length; index++) {
                             const doc = toBeSyncDocuments[index];
