@@ -250,6 +250,15 @@ const config = {
                                 href: 'https://apps.apple.com/app/oss-cardwallet/id6504414362'
                             }
                         ]
+                    },
+                    {
+                        title: 'Privacy',
+                        items: [
+                            {
+                                label: 'Privacy policy',
+                                href: 'https://www.akylas.fr/privacy'
+                            }
+                        ]
                     }
                 ],
                 copyright: `Copyright © ${new Date().getFullYear()} OSS Document Scanner & CardWallet. Built with Docusaurus.`
