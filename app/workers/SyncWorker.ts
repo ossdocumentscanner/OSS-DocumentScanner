@@ -343,6 +343,18 @@ export default class SyncWorker extends BaseWorker {
                             }
                         }
                         ApplicationSettings.remove(deleteKey);
+
+
+                        for (let index = 0; index < toBeSyncDocuments.length; index++) {
+                            const doc = toBeSyncDocuments[index];
+                            const canBeSynced = await this.syncDocumentOnRemote(doc, service);
+                            if (canBeSynced === false) {
+                                missingRemoteDocuments.push(doc);
+                                continue;
+                            }
+                            currentItemIndex++;
+                            this.updateSyncProgress('data', currentItemIndex, totalItemsToSync, doc.id, doc.name);
+                        }
                         for (let index = 0; index < missingRemoteDocuments.length; index++) {
                             const doc = missingRemoteDocuments[index];
                             await service.addDocumentToRemote(doc);
@@ -350,6 +362,7 @@ export default class SyncWorker extends BaseWorker {
                             currentItemIndex++;
                             this.updateSyncProgress('data', currentItemIndex, totalItemsToSync, doc.id, doc.name);
                         }
+
                         for (let index = 0; index < missingLocalDocuments.length; index++) {
                             const data = await service.importDocumentFromRemote(missingLocalDocuments[index]);
                             if (data) {
@@ -360,11 +373,6 @@ export default class SyncWorker extends BaseWorker {
                                 currentItemIndex++;
                                 this.updateSyncProgress('data', currentItemIndex, totalItemsToSync, doc.id, doc.name);
                             }
-                        }
-                        for (let index = 0; index < toBeSyncDocuments.length; index++) {
-                            await this.syncDocumentOnRemote(toBeSyncDocuments[index], service);
-                            currentItemIndex++;
-                            this.updateSyncProgress('data', currentItemIndex, totalItemsToSync, toBeSyncDocuments[index].id, toBeSyncDocuments[index].name);
                         }
                     } else {
                         if (withFolders || (event && (event.eventName === EVENT_FOLDER_ADDED || event.eventName === EVENT_FOLDER_UPDATED))) {
@@ -469,9 +477,16 @@ export default class SyncWorker extends BaseWorker {
     }
 
     async syncDocumentOnRemote(document: OCRDocument, service: BaseDataSyncService) {
-        const dataJSON = JSON.parse(await service.getFileFromRemote(DOCUMENT_DATA_FILENAME, document)) as OCRDocument;
+        let dataJSON: OCRDocument;
+        try {
+            dataJSON = JSON.parse(await service.getFileFromRemote(DOCUMENT_DATA_FILENAME, document)) as OCRDocument;
+        } catch (error) {
+            if (error.statusCode === 404) {
+                return false;
+            }
+            throw error;
+        }
         const docDataFolder = documentsService.dataFolder.getFolder(document.id);
-        // DEV_LOG && console.info('syncDocumentOnRemote', document.id, document.modifiedDate, dataJSON.modifiedDate);
 
         // Check if this is a legacy document (no .valid marker yet) for migration
         const hasValidMarker = await service.hasValidMarker(document.id);
