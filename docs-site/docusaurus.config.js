@@ -15,14 +15,14 @@ const config = {
     favicon: 'img/favicon.ico',
 
     // Set the production url of your site here
-    url: 'https://www.akylas.fr',
+    url: 'https://documentscanner.akylas.fr',
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
-    baseUrl: '/',
+    baseUrl: '',
 
     // GitHub pages deployment config.
     // If you aren't using GitHub pages, you don't need these.
-    organizationName: 'Akylas', // Usually your GitHub org/user name.
+    organizationName: 'ossdocumentscanner', // Usually your GitHub org/user name.
     projectName: 'OSS-DocumentScanner', // Usually your repo name.
     trailingSlash: false,
 
