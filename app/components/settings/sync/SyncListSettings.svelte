@@ -9,7 +9,7 @@
     import ListItemAutoSize from '@shared/components/ListItemAutoSize.svelte';
     import { lc, onLanguageChanged } from '~/helpers/locale';
     import { onThemeChanged } from '~/helpers/theme';
-    import { SERVICES_SYNC_TITLES, syncService } from '~/services/sync';
+    import { SERVICES_SYNC_ICONS_COLORS, SERVICES_SYNC_TITLES, syncService } from '~/services/sync';
     import { LocalFolderImageSyncServiceOptions } from '~/services/sync/local/LocalFolderImageSyncService';
     import { LocalFolderPDFSyncServiceOptions } from '~/services/sync/local/LocalFolderPDFSyncService';
     import { SERVICES_SYNC_COLOR, SyncTypes } from '~/services/sync/types';
@@ -221,10 +221,17 @@
                 case 'add':
                     const options = Object.keys(SERVICES_SYNC_TITLES)
                         .filter((s) => s.endsWith(type))
-                        .map((s) => ({
-                            data: s,
-                            name: SERVICES_SYNC_TITLES[s]
-                        }));
+                        .map((s) => {
+                            const key = s.split('_')[0];
+                            const iconData = SERVICES_SYNC_ICONS_COLORS[key];
+                            return {
+                                data: s,
+                                icon: iconData?.icon,
+                                iconColor: iconData?.color,
+                                iconFontFamily: iconData?.fontFamily,
+                                name: SERVICES_SYNC_TITLES[s]
+                            };
+                        });
                     const selection = await showAlertOptionSelect(
                         {
                             fontWeight: 'normal',
@@ -415,14 +422,11 @@
                     startingSide={item.startingSide}
                     translationFunction={drawerTranslationFunction}>
                     <ListItemAutoSize
-                        prop:mainContent
                         borderLeftColor={getSyncColor(item)}
                         borderLeftWidth={5}
-                        fontSize={20}
-                        rightValue={item.rightValue}
+                        item={{ title: getTitle(item), subtitle: getDescription(item) }}
+                        prop:mainContent
                         showBottomLine={false}
-                        subtitle={getDescription(item)}
-                        title={getTitle(item)}
                         on:tap={(event) => onItemTap(item, event)} />
                     <label
                         class="mdi"

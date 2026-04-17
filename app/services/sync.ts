@@ -22,7 +22,6 @@ import {
 import type SyncWorker from '~/workers/SyncWorker';
 import { DocumentAddedEventData, DocumentDeletedEventData, DocumentEvents, DocumentPagesAddedEventData, DocumentUpdatedEventData, FolderUpdatedEventData, documentsService } from './documents';
 import { SYNC_TYPES, SyncType, getRemoteDeleteDocumentSettingsKey } from './sync/types';
-import { WebdavDataSyncOptions } from './sync/webdav/WebdavDataSyncService';
 import { getStoredSyncServices } from '~/services/sync/BaseSyncService';
 
 export const syncServicesStore = writable([]);
@@ -53,6 +52,12 @@ export function findArrayDiffs<S, T>(array1: S[], array2: T[], compare: (a: S, b
     };
 }
 
+export const SERVICES_SYNC_ICONS_COLORS: { [key: string]: { icon: string; color?: string; fontFamily?: string } } = {
+    webdav: { icon: 'app-webdav', color: '#347df0', fontFamily: 'app' },
+    gdrive: { icon: 'app-gdrive', color: '#f7b403', fontFamily: 'app' },
+    onedrive: { icon: 'app-onedrive', color: '#28a3e4', fontFamily: 'app' },
+    folder: { icon: 'mdi-folder' }
+};
 export const SERVICES_SYNC_TITLES: { [key in SYNC_TYPES]: string } = {
     webdav_image: lc('webdav_server'),
     webdav_pdf: lc('webdav_server'),
