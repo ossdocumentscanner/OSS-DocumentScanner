@@ -6,7 +6,7 @@
     import { showError } from '@shared/utils/showError';
     import { showModal } from '@shared/utils/svelte/ui';
     import CActionBar from '~/components/common/CActionBar.svelte';
-    import ListItemAutoSize from '~/components/common/ListItemAutoSize.svelte';
+    import ListItemAutoSize from '@shared/components/ListItemAutoSize.svelte';
     import { lc, onLanguageChanged } from '~/helpers/locale';
     import { onThemeChanged } from '~/helpers/theme';
     import { SERVICES_SYNC_TITLES, syncService } from '~/services/sync';

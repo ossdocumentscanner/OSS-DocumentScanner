@@ -16,7 +16,7 @@
     import { onDestroy, onMount } from 'svelte';
     import { writable } from 'svelte/store';
     import CActionBar from '~/components/common/CActionBar.svelte';
-    import IconButton from '~/components/common/IconButton.svelte';
+    import IconButton from '@shared/components/IconButton.svelte';
     import { lc } from '~/helpers/locale';
     import { DocFolder, OCRDocument, PageData } from '~/models/OCRDocument';
     import { documentsService } from '~/services/documents';
@@ -770,6 +770,7 @@
             {#if !onlyForOCR}
                 <IconButton
                     colSpan={2}
+                    rounded={false}
                     color="white"
                     horizontalAlignment="left"
                     isSelected={batchMode}

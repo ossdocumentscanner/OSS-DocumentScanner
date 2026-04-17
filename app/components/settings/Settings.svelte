@@ -15,7 +15,7 @@
     import { Template } from '@nativescript-community/svelte-native/components';
     import { NativeViewElementNode } from '@nativescript-community/svelte-native/dom';
     import CActionBar from '~/components/common/CActionBar.svelte';
-    import ListItemAutoSize from '~/components/common/ListItemAutoSize.svelte';
+    import ListItemAutoSize from '@shared/components/ListItemAutoSize.svelte';
     import { getLocaleDisplayName, l, lc, lu, onLanguageChanged, selectLanguage, slc } from '~/helpers/locale';
     import { getColorThemeDisplayName, getThemeDisplayName, onThemeChanged, selectColorTheme, selectTheme } from '~/helpers/theme';
     import { DocumentsService, documentsService } from '~/services/documents';
@@ -79,7 +79,7 @@
     import { createView, getNameFormatHTMLArgs, hideLoading, openLink, showAlertOptionSelect, showLoading, showSettings, showSliderPopover, showSnack } from '~/utils/ui';
     import { restartApp, toggleQuickSetting } from '~/utils/utils';
     import { colors, fontScale, fonts, hasCamera, onFontScaleChanged, windowInset } from '~/variables';
-    import IconButton from '../common/IconButton.svelte';
+    import IconButton from '@shared/components/IconButton.svelte';
     import { share } from '@akylas/nativescript-app-utils/share';
     import { inappItems, presentInAppSponsorBottomsheet } from '@shared/utils/inapp-purchase';
     import OCRSettingsBottomSheet from '../ocr/OCRSettingsBottomSheet.svelte';
@@ -1576,45 +1576,35 @@
                 </gridlayout>
             </Template>
             <Template key="sectionheader" let:item>
-                <label class="sectionHeader" text={item.title} />
+                <label class="sectionHeader" {...item.additionalProps || {}} text={item.title} />
             </Template>
             <Template key="switch" let:item>
-                <ListItemAutoSize enabled={item.enabled} subtitle={getDescription(item)} title={getTitle(item)} on:tap={(event) => onTap(item, event)}>
-                    <switch
-                        id="checkbox"
-                        checked={item.value}
-                        col={1}
-                        isEnabled={item.enabled !== false}
-                        marginLeft={10}
-                        marginTop={16}
-                        verticalAlignment="center"
-                        on:checkedChange={(e) => onCheckBox(item, e)} />
+                <ListItemAutoSize item={{ ...item, title: getTitle(item), subtitle: getDescription(item) }} on:tap={(event) => onTap(item, event)}>
+                    <switch id="checkbox" checked={item.value} col={1} marginLeft={10} verticalAlignment="center" on:checkedChange={(e) => onCheckBox(item, e)} />
                 </ListItemAutoSize>
             </Template>
             <Template key="checkbox" let:item>
-                <ListItemAutoSize enabled={item.enabled} subtitle={getDescription(item)} title={getTitle(item)} on:tap={(event) => onTap(item, event)}>
-                    <checkbox id="checkbox" checked={item.value} col={1} isEnabled={item.enabled !== false} marginLeft={10} on:checkedChange={(e) => onCheckBox(item, e)} />
+                <ListItemAutoSize item={{ ...item, title: getTitle(item), subtitle: getDescription(item) }} on:tap={(event) => onTap(item, event)}>
+                    <checkbox id="checkbox" checked={item.value} col={1} on:checkedChange={(e) => onCheckBox(item, e)} />
                 </ListItemAutoSize>
             </Template>
             <Template key="rightIcon" let:item>
-                <ListItemAutoSize enabled={item.enabled} rightValue={item.rightValue} subtitle={getDescription(item)} title={getTitle(item)} on:tap={(event) => onTap(item, event)}>
+                <ListItemAutoSize item={{ ...item, title: getTitle(item), subtitle: getDescription(item) }} showBottomLine={false} on:tap={(event) => onTap(item, event)}>
                     <IconButton col={1} text={item.rightBtnIcon} on:tap={(event) => onRightIconTap(item, event)} />
                 </ListItemAutoSize>
             </Template>
             <Template key="leftIcon" let:item>
                 <ListItemAutoSize
                     columns="auto,*,auto"
-                    enabled={item.enabled}
+                    item={{ ...item, title: getTitle(item), subtitle: getDescription(item) }}
                     mainCol={1}
-                    rightValue={item.rightValue}
-                    subtitle={getDescription(item)}
-                    title={getTitle(item)}
+                    showBottomLine={false}
                     on:tap={(event) => onTap(item, event)}>
                     <label col={0} color={colorOnBackground} fontFamily={$fonts.mdi} fontSize={24} padding="0 10 0 0" text={item.icon} verticalAlignment="center" />
                 </ListItemAutoSize>
             </Template>
             <Template let:item>
-                <ListItemAutoSize enabled={item.enabled} rightValue={item.rightValue} subtitle={getDescription(item)} title={getTitle(item)} on:tap={(event) => onTap(item, event)}></ListItemAutoSize>
+                <ListItemAutoSize item={{ ...item, title: getTitle(item), subtitle: getDescription(item) }} showBottomLine={false} on:tap={(event) => onTap(item, event)}></ListItemAutoSize>
             </Template>
 
             <Template key="ocr_settings" let:item>

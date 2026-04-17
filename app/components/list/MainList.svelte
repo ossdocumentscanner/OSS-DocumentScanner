@@ -10,7 +10,6 @@
     import { AnimationDefinition, Application, ApplicationSettings, Color, EventData, Frame, NavigatedData, ObservableArray, Page, StackLayout } from '@nativescript/core';
     import { AndroidActivityBackPressedEventData } from '@nativescript/core/application/application-interfaces';
     import { debounce, throttle } from '@nativescript/core/utils';
-    import ListItemAutoSize from '@shared/components/ListItemAutoSize.svelte';
     import { OptionType } from '@shared/components/OptionSelect.svelte';
     import { prefs } from '@shared/services/preferences';
     import { showError } from '@shared/utils/showError';
@@ -19,6 +18,7 @@
     import { writable } from 'svelte/store';
     import CActionBar from '~/components/common/CActionBar.svelte';
     import EditNameActionBar from '~/components/common/EditNameActionBar.svelte';
+    import ListItemAutoSize from '@shared/components/ListItemAutoSize.svelte';
     import SelectedIndicator from '~/components/common/SelectedIndicator.svelte';
     import SelectionToolbar from '~/components/common/SelectionToolbar.svelte';
     import ActionBarSearch from '~/components/widgets/ActionBarSearch.svelte';
@@ -1192,12 +1192,11 @@
                     columns="auto,*"
                     fontSize={17}
                     fontWeight="600"
+                    item={{ ...item, title: folder ? item.folder.name.replace(folder.name + '/', '') : item.folder.name, subtitle: lc('documents_count', item.folder.count) }}
                     mainCol={1}
                     margin="4 8 4 8"
                     padding="0 10 0 10"
-                    subtitle={lc('documents_count', item.folder.count)}
                     subtitleFontSize={12}
-                    title={folder ? item.folder.name.replace(folder.name + '/', '') : item.folder.name}
                     useExtraPadding={false}
                     on:longPress={(e) => onItemLongPress(item, e)}
                     on:tap={() => onItemTap(item)}>

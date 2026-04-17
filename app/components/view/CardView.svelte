@@ -78,8 +78,8 @@
     } from '~/utils/ui';
     import { colors, fontScale, fonts, hasCamera, isLandscape, onFontScaleChanged, screenHeightDips, screenWidthDips, windowInset } from '~/variables';
     import EditNameActionBar from '~/components/common/EditNameActionBar.svelte';
-    import IconButton from '~/components/common/IconButton.svelte';
-    import ListItemAutoSize from '~/components/common/ListItemAutoSize.svelte';
+    import IconButton from '@shared/components/IconButton.svelte';
+    import ListItemAutoSize from '@shared/components/ListItemAutoSize.svelte';
     import PKPassView from '~/components/pkpass/PKPassView.svelte';
 
     const rowMargin = 8;
@@ -1503,7 +1503,7 @@
                         </gridlayout>
                     </Template>
                     <Template key="color" let:item>
-                        <ListItemAutoSize fontSize={20} title={lc('color')} on:tap={(event) => changeColor(item, event)}>
+                        <ListItemAutoSize item={{ title: lc('color') }} on:tap={(event) => changeColor(item, event)}>
                             <absolutelayout backgroundColor={topBackgroundColor} borderColor={colorOutline} borderRadius="50%" borderWidth={2} col={1} height={40} marginLeft={10} width={40} />
                         </ListItemAutoSize>
                     </Template>
@@ -1518,7 +1518,7 @@
                                 visibility={editing ? 'visible' : 'collapsed'}
                                 on:tap={(event) => deleteExtraField(item, event)} />
                         </gridlayout>
-                        <ListItemAutoSize columns="*,auto,auto" fontSize={20} rightValue={formatItemValue(item)} title={item.name}></ListItemAutoSize>
+                        <ListItemAutoSize columns="*,auto,auto" item={{ rightValue: formatItemValue(item), title: item.name }}></ListItemAutoSize>
                     </Template>
                     <Template key="qrcode" let:item>
                         <gridlayout columns="auto,*,auto" height={60} padding="4 0 4 10">

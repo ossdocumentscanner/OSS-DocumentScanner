@@ -42,7 +42,7 @@
     } from '~/utils/ui';
     import { colors, fontScale, screenWidthDips, windowInset } from '~/variables';
     import EditNameActionBar from '../common/EditNameActionBar.svelte';
-    import IconButton from '../common/IconButton.svelte';
+    import IconButton from '@shared/components/IconButton.svelte';
     import PageIndicator from '../common/PageIndicator.svelte';
 
     // technique for only specific properties to get updated on store change
