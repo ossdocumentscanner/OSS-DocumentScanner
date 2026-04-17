@@ -644,7 +644,7 @@
 
     const onAddButton = tryCatchFunction(
         async () => {
-            const OptionSelect = (await import('~/components/common/OptionSelect.svelte')).default;
+            const OptionSelect = (await import('@shared/components/OptionSelect.svelte')).default;
             const rowHeight = 58;
             const options = [
                 {

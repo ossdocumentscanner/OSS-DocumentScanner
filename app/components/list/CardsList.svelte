@@ -62,7 +62,7 @@
     async function onAddButton() {
         DEV_LOG && console.log('onAddButton');
         try {
-            const OptionSelect = (await import('~/components/common/OptionSelect.svelte')).default;
+            const OptionSelect = (await import('@shared/components/OptionSelect.svelte')).default;
             const rowHeight = 58;
             const options = (
                 $hasCamera

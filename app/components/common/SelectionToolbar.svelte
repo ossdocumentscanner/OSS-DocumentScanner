@@ -63,7 +63,8 @@
     transition:slide={{ duration: 200 }}>
     <stacklayout col={hasOverflow ? 1 : 0} horizontalAlignment="center" orientation="horizontal">
         {#each visibleOptions as option, index}
-            <mdbutton class="selectionToolbarButton" color={option.color || colorOnSurface} text={option.icon} variant="text" on:tap={(event) => handleAction(event, option)} />
+            {@const color = typeof option.color === 'function' ? option['color'](options) : option.color}
+            <mdbutton class="selectionToolbarButton" color={color || colorOnSurface} text={option.icon} variant="text" on:tap={(event) => handleAction(event, option)} />
         {/each}
     </stacklayout>
     {#if hasOverflow}

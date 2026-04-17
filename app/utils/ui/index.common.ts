@@ -50,7 +50,7 @@ import { zip } from 'plugin-zip';
 import type { ComponentProps } from 'svelte';
 import { get } from 'svelte/store';
 import type ExportPDFAlertOptions__SvelteComponent_ from '~/components/common/ExportPDFAlertOptions.svelte';
-import type OptionSelect__SvelteComponent_ from '~/components/common/OptionSelect.svelte';
+import type OptionSelect__SvelteComponent_ from '@shared/components/OptionSelect.svelte';
 import type BottomSnack__SvelteComponent_ from '~/components/widgets/BottomSnack.svelte';
 import BottomSnack from '~/components/widgets/BottomSnack.svelte';
 import { getFileNameForDocument, getFormatedDateForFilename, getLocaleDisplayName, l, lang, lc } from '~/helpers/locale';
@@ -153,7 +153,7 @@ export async function importAndScanImageOrPdfFromUris({ canGoToView = true, docu
                 { group: 'pdf', name: lc('pdf_one_image_per_page'), data: PDFImportImages.never, type: 'checkbox', boxType: 'circle', value: true },
                 { group: 'pdf', name: lc('pdf_one_image_per_pdf_image'), data: PDFImportImages.always, type: 'checkbox', boxType: 'circle', value: false }
             ]);
-            // const component = (await import('~/components/common/OptionSelect.svelte')).default;
+            // const component = (await import('@shared/components/OptionSelect.svelte')).default;
             const result = await showConfirmOptionSelect<PDFImportImages>(
                 {
                     height: Math.min(options.length * 100, 400),
@@ -465,7 +465,7 @@ export async function importAndScanImage({
 }
 
 export async function showConfirmOptionSelect<T>(props?: ComponentProps<OptionSelect__SvelteComponent_>, options?: Partial<ConfirmOptions & MDCAlertControlerOptions>) {
-    const component = (await import('~/components/common/OptionSelect.svelte')).default;
+    const component = (await import('@shared/components/OptionSelect.svelte')).default;
     let componentInstanceInfo: ComponentInstanceInfo<GridLayout, OptionSelect__SvelteComponent_>;
     try {
         componentInstanceInfo = resolveComponentElement(component, {
@@ -506,7 +506,7 @@ export async function showPopoverMenu<T = any>({
     vertPos
 }: { options; anchor; onClose?; props?; title?: string; closeOnClose? } & Partial<PopoverOptions>) {
     const { colorSurfaceContainer } = get(colors);
-    const OptionSelect = (await import('~/components/common/OptionSelect.svelte')).default;
+    const OptionSelect = (await import('@shared/components/OptionSelect.svelte')).default;
     const rowHeight = (props?.rowHeight || 58) * get(fontScale);
     const maxHeight = Screen.mainScreen.heightDIPs - 50;
     const result: T = await showPopover({
