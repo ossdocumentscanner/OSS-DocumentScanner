@@ -782,6 +782,16 @@
 
         return [selected, docs.length === 1 ? docs[0] : undefined, docs];
     }
+    async function toggleFavoriteSelectedDocuments() {
+        const selectedDocs = await getSelectedDocuments();
+        const allFavorite = selectedDocs.every((d) => d.favorite === 1);
+        const newFavorite = allFavorite ? 0 : 1;
+        for (const doc of selectedDocs) {
+            await doc.save({ favorite: newFavorite }, false, false);
+        }
+        unselectAll();
+        refresh();
+    }
     async function deleteSelectedDocuments() {
         if (nbSelected > 0) {
             try {
@@ -1053,14 +1063,7 @@
                     }
                     break;
                 case 'favorite':
-                    const selectedDocs = await getSelectedDocuments();
-                    const allFavorite = selectedDocs.every((d) => d.favorite === 1);
-                    const newFavorite = allFavorite ? 0 : 1;
-                    for (const doc of selectedDocs) {
-                        await doc.save({ favorite: newFavorite }, false, false);
-                    }
-                    unselectAll();
-                    refresh();
+                    await toggleFavoriteSelectedDocuments();
                     break;
                 case 'move_folder':
                     const selected = await getSelectedDocuments();
@@ -1148,14 +1151,7 @@
                             }
                             break;
                         case 'favorite':
-                            const selectedDocs = await getSelectedDocuments();
-                            const allFavorite = selectedDocs.every((d) => d.favorite === 1);
-                            const newFavorite = allFavorite ? 0 : 1;
-                            for (const doc of selectedDocs) {
-                                await doc.save({ favorite: newFavorite }, false, false);
-                            }
-                            unselectAll();
-                            refresh();
+                            await toggleFavoriteSelectedDocuments();
                             break;
                         case 'move_folder':
                             const selected = await getSelectedDocuments();
