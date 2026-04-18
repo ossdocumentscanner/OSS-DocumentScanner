@@ -494,7 +494,10 @@ export class DocumentRepository extends BaseRepository<OCRDocument, Document> {
                 createdDate BIGINT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
                 modifiedDate BIGINT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
                 name TEXT,
-                _synced INTEGER DEFAULT 0
+                _synced INTEGER DEFAULT 0,
+                favorite INTEGER NOT NULL DEFAULT 0,
+                usedDate BIGINT,
+                useCount INTEGER NOT NULL DEFAULT 0
                 );
         `),
             this.database.query(sql`
@@ -521,6 +524,9 @@ export class DocumentRepository extends BaseRepository<OCRDocument, Document> {
     migrations = {
         addExtra: sql`ALTER TABLE Document ADD COLUMN extra TEXT`,
         addPagesOrder: sql`ALTER TABLE Document ADD COLUMN pagesOrder TEXT`,
+        addFavorite: sql`ALTER TABLE Document ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0`,
+        addUsedDate: sql`ALTER TABLE Document ADD COLUMN usedDate BIGINT`,
+        addUseCount: sql`ALTER TABLE Document ADD COLUMN useCount INTEGER NOT NULL DEFAULT 0`,
 
         updateDocSearchAccentInsensitive: (sequenceDb: DatabaseInterface) =>
             new Promise<void>(async (resolve, reject) => {
@@ -602,6 +608,8 @@ export class DocumentRepository extends BaseRepository<OCRDocument, Document> {
             } else if (k === 'name') {
                 toUpdate[k] = value;
                 toUpdate.nameSearch = normalizeSearchString(value);
+            } else if (k === 'favorite' || k === 'usedDate' || k === 'useCount') {
+                toUpdate[k] = value;
             } else if (typeof value === 'object' || Array.isArray(value)) {
                 toUpdate[k] = JSON.stringify(value);
             } else {
@@ -613,6 +621,14 @@ export class DocumentRepository extends BaseRepository<OCRDocument, Document> {
         Object.assign(document, toSave);
         // DEV_LOG && console.log('update doc', toSave, document._synced);
         return document;
+    }
+
+    async incrementUsage(document: OCRDocument) {
+        const usedDate = Date.now();
+        const useCount = (document.useCount || 0) + 1;
+        await super.update(document, { usedDate, useCount });
+        document.usedDate = usedDate;
+        document.useCount = useCount;
     }
     async addTag(document: OCRDocument, tagId: string) {
         try {
@@ -652,13 +668,18 @@ export class DocumentRepository extends BaseRepository<OCRDocument, Document> {
         return result;
     }
     async findDocuments({ filter, folder, omitThoseWithFolders = false, order = 'id DESC' }: { filter?: string; folder?: DocFolder; omitThoseWithFolders?: boolean; order?: string } = {}) {
+        // Build the secondary sort expression. All columns are on the Document alias "d".
+        const secondaryOrder = `d.${order}`;
+        // Always sort favorites first, then by the user-selected key
+        const orderBy = new SqlQuery([`d.favorite DESC, ${secondaryOrder}`]);
+
         const args = {
             select: new SqlQuery([
                 `d.*,
             group_concat(f.id, '${FOLDERS_SEPARATOR}') AS folders`
             ]),
             from: sql`Document d`,
-            orderBy: new SqlQuery([`d.${order}`]),
+            orderBy,
             groupBy: sql`d.id`
         } as any;
 

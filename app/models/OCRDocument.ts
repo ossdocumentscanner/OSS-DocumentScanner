@@ -115,6 +115,9 @@ export interface Document {
     pages?: OCRPage[];
     extra?: DocumentExtra;
     db_version?: number;
+    favorite?: number;
+    usedDate?: number;
+    useCount?: number;
 }
 
 let documentsService: DocumentsService;
@@ -153,6 +156,9 @@ export class OCRDocument extends Observable implements Document {
     tags: string[];
     folders: number[];
     _synced: number;
+    favorite: number = 0;
+    usedDate?: number;
+    useCount: number = 0;
 
     extra?: DocumentExtra;
 
