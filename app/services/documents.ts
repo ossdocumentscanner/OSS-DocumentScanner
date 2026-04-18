@@ -794,6 +794,7 @@ export interface DocumentPageUpdatedEventData extends DocumentEventData {
 export interface DocumentUpdatedEventData extends DocumentEventData {
     doc?: OCRDocument;
     updateModifiedDate?: boolean;
+    updateFavorite?: boolean;
 }
 export interface FolderUpdatedEventData extends DocumentEventData {
     folder?: DocFolder;

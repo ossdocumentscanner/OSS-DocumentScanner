@@ -348,15 +348,20 @@
                 return true;
             }
         });
-        // DEV_LOG && console.log('onDocumentUpdated', doc._synced, doc.id, index, doc.folders, doc.pages.length);
+        DEV_LOG && console.log('onDocumentUpdated', doc._synced, doc.id, index, doc.folders, doc.pages.length);
         if (index >= 0) {
             if (folder && doc.folders && doc.folders.indexOf(folder.id) === -1) {
                 documents.splice(index, 1);
             } else {
                 const item = documents?.getItem(index);
                 if (item) {
-                    item.doc = event.doc;
-                    documents.setItem(index, item);
+                    DEV_LOG && console.log('onDocumentUpdated1', item.doc.favorite, doc.favorite);
+                    if (event.updateFavorite) {
+                        refresh();
+                    } else {
+                        item.doc = event.doc;
+                        documents.setItem(index, item);
+                    }
                 }
             }
             refreshFolders();
@@ -496,12 +501,15 @@
         }
     }
     async function onNavigatedTo(e: NavigatedData) {
+        DEV_LOG && console.log('onNavigatedTo', e.isBackNavigation, sortOrder);
         if (!e.isBackNavigation) {
             if (documentsService.started) {
                 refresh();
             } else {
                 documentsService.once('started', refreshSimple);
             }
+        } else if (sortOrder.startsWith('useCount')) {
+            refresh();
         }
     }
     function selectItem(item: Item) {
@@ -1089,17 +1097,15 @@
 
     async function showOptions(event) {
         const options = new ObservableArray(
-            [{ id: 'select_all', name: lc('select_all'), icon: 'mdi-select-all' }]
-                .concat(nbSelected === 1 ? [{ icon: 'mdi-rename', id: 'rename', name: lc('rename') }] : [])
-                .concat([
-                    { icon: 'mdi-star', id: 'favorite', name: lc('toggle_favorite') },
-                    { icon: 'mdi-folder-swap', id: 'move_folder', name: lc('move_folder') },
-                    { icon: 'mdi-share-variant', id: 'share', name: lc('share_images') },
-                    { icon: 'mdi-fullscreen', id: 'fullscreen', name: lc('show_fullscreen_images') },
-                    { icon: 'mdi-auto-fix', id: 'transform', name: lc('transform_images') },
-                    { icon: 'mdi-text-recognition', id: 'ocr', name: lc('ocr_document') },
-                    { color: colorError, icon: 'mdi-delete', id: 'delete', name: lc('delete') }
-                ] as any)
+            [{ id: 'select_all', name: lc('select_all'), icon: 'mdi-select-all' }].concat(nbSelected === 1 ? [{ icon: 'mdi-rename', id: 'rename', name: lc('rename') }] : []).concat([
+                { icon: 'mdi-star', id: 'favorite', name: lc('toggle_favorite') },
+                { icon: 'mdi-folder-swap', id: 'move_folder', name: lc('move_folder') },
+                { icon: 'mdi-share-variant', id: 'share', name: lc('share_images') },
+                { icon: 'mdi-fullscreen', id: 'fullscreen', name: lc('show_fullscreen_images') },
+                { icon: 'mdi-auto-fix', id: 'transform', name: lc('transform_images') },
+                { icon: 'mdi-text-recognition', id: 'ocr', name: lc('ocr_document') },
+                { color: colorError, icon: 'mdi-delete', id: 'delete', name: lc('delete') }
+            ] as any)
         );
         return showPopoverMenu({
             anchor: event.object,

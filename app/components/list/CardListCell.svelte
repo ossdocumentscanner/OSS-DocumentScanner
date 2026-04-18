@@ -17,6 +17,8 @@
 </script>
 
 <script lang="ts">
+    import FavoriteIndicator from '~/components/common/FavoriteIndicator.svelte';
+
     let { colorOnPrimary, colorSurface } = $colors;
     $: ({ colorOnPrimary, colorSurface } = $colors);
 
@@ -287,6 +289,7 @@
         <!-- <gridlayout borderRadius={12}> -->
         <SelectedIndicator selected={item.selected} />
         <SyncIndicator {syncColors} verticalAlignment="top" visible={syncEnabled} />
+        <FavoriteIndicator favorite={item.doc.favorite === 1} />
         <!-- </gridlayout> -->
     </gridlayout>
     <!-- <mdbutton prop:rightDrawer class="mdi" fontSize={40} height={60} text="mdi-fullscreen" variant="text" verticalAlignment="center" width={60} on:tap={() => showImages(item)} />
