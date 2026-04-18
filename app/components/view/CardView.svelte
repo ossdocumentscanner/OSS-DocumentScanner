@@ -687,6 +687,7 @@
         documentsService.on(EVENT_DOCUMENT_PAGES_ADDED, onPagesAdded);
 
         shortcutService.updateShortcuts(document);
+        documentsService.documentRepository.incrementUsage(document).catch(() => {});
         // refresh();
     });
     onDestroy(() => {
@@ -831,7 +832,10 @@
         } else {
             // Filter options based on PKPass document
 
-            const allOptions = [{ id: 'rename', name: lc('rename'), icon: 'mdi-rename' }] as any[];
+            const allOptions = [
+                { id: 'rename', name: lc('rename'), icon: 'mdi-rename' },
+                { id: 'favorite', name: lc('toggle_favorite'), icon: document.favorite === 1 ? 'mdi-star' : 'mdi-star-outline' }
+            ] as any[];
 
             if (!isPKPassDocument) {
                 if (hasImages) {
@@ -860,6 +864,9 @@
                     switch (item.id) {
                         case 'rename':
                             editingTitle = true;
+                            break;
+                        case 'favorite':
+                            await document.save({ favorite: document.favorite === 1 ? 0 : 1 }, false, true, { updateFavorite: true });
                             break;
                         case 'share':
                             await showImagePopoverMenu(geAllPages(), event.object);
