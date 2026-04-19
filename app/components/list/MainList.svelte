@@ -1005,10 +1005,10 @@
             { icon: 'mdi-share-variant', id: 'share', name: lc('share_images') },
             { icon: 'mdi-auto-fix', id: 'transform', name: lc('transform_images') },
             { icon: 'mdi-text-recognition', id: 'ocr', name: lc('ocr_document') },
-            { icon: 'mdi-star', id: 'favorite', name: lc('toggle_favorite') },
             { id: 'select_all', name: lc('select_all'), icon: 'mdi-select-all' },
             { color: colorError, icon: 'mdi-delete', id: 'delete', name: lc('delete') },
             ...(nbSelected === 1 ? [{ icon: 'mdi-rename', id: 'rename', name: lc('rename') }] : []),
+            { icon: 'mdi-star', id: 'favorite', name: lc('toggle_favorite') },
             { icon: 'mdi-folder-swap', id: 'move_folder', name: lc('move_folder') },
             { icon: 'mdi-fullscreen', id: 'fullscreen', name: lc('show_fullscreen_images') }
         ];
