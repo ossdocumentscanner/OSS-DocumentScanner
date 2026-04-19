@@ -26,8 +26,13 @@ import { getFormatedDateForFilename } from '~/utils/utils.common';
  * @returns                The created OCRDocument
  */
 export async function importGoogleWalletUrl(googleWalletUrl: string, folder?: DocFolder): Promise<OCRDocument> {
-    // Parse the URL / JWT
-    const parseResult = parseGoogleWalletUrl(googleWalletUrl);
+    // Parse the URL / JWT — wrap in a try-catch to provide a user-friendly message
+    let parseResult;
+    try {
+        parseResult = parseGoogleWalletUrl(googleWalletUrl);
+    } catch (error) {
+        throw new Error(`Failed to import Google Wallet link: ${error?.message || error}`);
+    }
     const { passKind, objects, organizationName } = parseResult;
 
     const date = Date.now();

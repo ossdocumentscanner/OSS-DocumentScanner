@@ -136,10 +136,15 @@ function decodeJWTPayload(jwt: string): GoogleWalletJWTPayload | null {
         }
 
         // Sanitise known invalid patterns before retrying.
-        // Specifically: some issuers produce "iat":\"\" (raw backslash-escaped
-        // empty string) which is not valid JSON.  Replace any "iat" value that
-        // begins with a backslash with null so the rest of the payload can be
-        // parsed successfully.
+        //
+        // Some issuers (observed in SNCF Connect JWTs) set the `iat` claim to a
+        // raw backslash-escaped empty string that looks like:
+        //   "iat":\"\"
+        // rather than the valid:
+        //   "iat":""
+        // The backslash character (0x5C) placed before each double-quote makes
+        // the value invalid JSON.  We replace such patterns with `null` so the
+        // rest of the well-formed payload can be parsed successfully.
         const sanitised = decoded.replace(/"iat"\s*:\s*\\"[^"]*\\"/g, '"iat":null');
         try {
             return JSON.parse(sanitised) as GoogleWalletJWTPayload;
@@ -246,12 +251,24 @@ export function parseGoogleWalletUrl(url: string): GoogleWalletParseResult {
 
     const kindResult = detectPassKind(payload);
     if (!kindResult) {
-        // Tolerate empty / unknown payloads: create a single generic entry for the URL
+        // Tolerate empty / unknown payloads: create a single generic entry for the URL.
+        // Use a simple hash of the JWT as the fallback id to avoid duplicates.
+        let fallbackId = Date.now().toString(36);
+        try {
+            // djb2 hash — fast, no crypto dependency
+            let h = 5381;
+            for (let i = 0; i < jwt.length; i++) {
+                h = ((h << 5) + h) ^ jwt.charCodeAt(i);
+            }
+            fallbackId = (h >>> 0).toString(16);
+        } catch {
+            // keep the timestamp-based fallback
+        }
         return {
             jwtPayload: payload,
             originalUrl: url,
             passKind: 'genericObjects',
-            objects: [{ id: jwt.slice(0, 32) }],
+            objects: [{ id: fallbackId }],
             organizationName: extractOrganizationName(payload)
         };
     }
