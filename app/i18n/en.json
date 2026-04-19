@@ -486,5 +486,6 @@
   "authenticate": "authenticate",
   "re_authenticate": "reauthenticate",
   "scale": "scale",
-  "unsupported_barcode_value": "unsupported value for barcode"
+  "unsupported_barcode_value": "unsupported value for barcode",
+  "folder_view_style": "folder view style"
 }
