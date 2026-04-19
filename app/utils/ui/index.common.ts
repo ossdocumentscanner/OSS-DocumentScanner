@@ -99,6 +99,8 @@ import {
     getImageExportSettings
 } from '~/utils/constants';
 import { recycleImages } from '~/utils/images';
+import { isGoogleWalletUrl } from '~/utils/google-wallet';
+import { importGoogleWalletUrl } from '~/utils/google-wallet-import';
 import { buildPassArchive, getStoredPassFormat } from '~/utils/pkpass';
 import { importPKPassFiles } from '~/utils/pkpass-import';
 import { showToast } from '~/utils/ui';
@@ -2215,6 +2217,57 @@ export async function importPKPassFromUris({ canGoToView = true, uris }: { uris:
             hideLoading();
         }
     }
+}
+
+/**
+ * Import a Google Wallet URL directly (e.g. scanned from a QR code or
+ * received via an intent).
+ */
+export async function importFromGoogleWalletLink({ canGoToView = true, url, folder }: { url: string; canGoToView?: boolean; folder?: DocFolder }) {
+    if (CARD_APP) {
+        try {
+            await showLoading(lc('importing'));
+            const document = await importGoogleWalletUrl(url, folder);
+            if (canGoToView && document) {
+                await hideLoading();
+                await goToDocumentView(document);
+            }
+            showSnack({ message: lc('imported') });
+        } catch (error) {
+            showError(error);
+        } finally {
+            hideLoading();
+        }
+    }
+}
+
+/**
+ * Show a prompt dialog asking the user to paste a Google Wallet URL, then
+ * import it.  Used from the CardsList add-button menu.
+ */
+export async function promptAndImportGoogleWalletLink(folder?: DocFolder) {
+    if (!CARD_APP) {
+        return;
+    }
+    const result = await prompt({
+        title: lc('google_wallet_import_title'),
+        message: lc('google_wallet_paste_hint'),
+        okButtonText: lc('import'),
+        cancelButtonText: lc('cancel'),
+        iosForceClosePresentedViewController: true
+    });
+
+    if (!result?.result || !result.text?.trim()) {
+        return;
+    }
+
+    const url = result.text.trim();
+    if (!isGoogleWalletUrl(url)) {
+        showError(new Error(lc('google_wallet_invalid_url')));
+        return;
+    }
+
+    await importFromGoogleWalletLink({ url, folder });
 }
 
 export function isPermResultNeverAskAgain(r: MultiResult | Status) {

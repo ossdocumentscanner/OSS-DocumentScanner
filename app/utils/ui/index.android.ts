@@ -6,7 +6,8 @@ import { Dayjs } from 'dayjs';
 import { documentsService } from '~/services/documents';
 import { ocrService } from '~/services/ocr';
 import { securityService } from '~/services/security';
-import { copyOCRToClipboard, getOCRFromCamera, goToDocumentView, importAndScanImageOrPdfFromUris, importPKPassFromUris, onStartCam, requestStoragePermission } from './index.common';
+import { isGoogleWalletUrl } from '~/utils/google-wallet';
+import { copyOCRToClipboard, getOCRFromCamera, goToDocumentView, importAndScanImageOrPdfFromUris, importFromGoogleWalletLink, importPKPassFromUris, onStartCam, requestStoragePermission } from './index.common';
 
 export * from './index.common';
 
@@ -34,6 +35,7 @@ async function innerOnAndroidIntent(event: AndroidActivityNewIntentEventData) {
             const action = intent.getAction();
             let uris: string[] = [];
             const pkpassUris: string[] = [];
+            const googleWalletUrls: string[] = [];
             switch (action) {
                 case 'android.intent.action.SEND':
                     const imageUri = intent.getParcelableExtra('android.intent.extra.STREAM') as android.net.Uri;
@@ -51,7 +53,9 @@ async function innerOnAndroidIntent(event: AndroidActivityNewIntentEventData) {
                     DEV_LOG && console.log('uris', uri);
                     if (uri) {
                         const uriStr = uri.toString();
-                        if (CARD_APP && isPKPassUri(intent, uriStr)) {
+                        if (CARD_APP && isGoogleWalletUrl(uriStr)) {
+                            googleWalletUrls.push(uriStr);
+                        } else if (CARD_APP && isPKPassUri(intent, uriStr)) {
                             pkpassUris.push(uriStr);
                         } else {
                             uris.push(uriStr);
@@ -126,6 +130,11 @@ async function innerOnAndroidIntent(event: AndroidActivityNewIntentEventData) {
                             return u;
                         }
                     });
+                }
+            }
+            if (CARD_APP && googleWalletUrls.length) {
+                for (const url of googleWalletUrls) {
+                    await importFromGoogleWalletLink({ url });
                 }
             }
             if (CARD_APP && pkpassUris.length) {

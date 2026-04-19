@@ -11,7 +11,7 @@
     import { Writable, writable } from 'svelte/store';
     import { DocFolder, OCRDocument } from '~/models/OCRDocument';
     import { CARD_RATIO, DEFAULT_NB_COLUMNS, DEFAULT_NB_COLUMNS_LANDSCAPE, SETTINGS_NB_COLUMNS, SETTINGS_NB_COLUMNS_LANDSCAPE } from '~/utils/constants';
-    import { goToDocumentAfterScan, importImageFromCamera } from '~/utils/ui';
+    import { goToDocumentAfterScan, importImageFromCamera, promptAndImportGoogleWalletLink } from '~/utils/ui';
     import { colors, fontScale, hasCamera, isLandscape, screenHeightDips, screenWidthDips, windowInset } from '~/variables';
     import MainList, { Item } from './MainList.svelte';
 
@@ -85,6 +85,11 @@
                         id: 'import_image',
                         name: lc('import_from_image'),
                         icon: 'mdi-image-plus-outline'
+                    },
+                    {
+                        id: 'import_google_wallet',
+                        name: lc('import_from_google_wallet'),
+                        icon: 'mdi-wallet'
                     }
                 ])
                 .concat([
@@ -117,6 +122,9 @@
                         break;
                     case 'import_image':
                         await importImages();
+                        break;
+                    case 'import_google_wallet':
+                        await promptAndImportGoogleWalletLink(folder);
                         break;
                     case 'create':
                         const CreateCard = (await import('~/components/widgets/CreateCard.svelte')).default;
