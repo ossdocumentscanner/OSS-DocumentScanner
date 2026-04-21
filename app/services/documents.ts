@@ -59,6 +59,19 @@ function escapeLike(val: string) {
     return val.replace(/[\\%_]/g, (m) => '\\' + m);
 }
 
+function tableColumnAlterPromise(query: SqlQuery) {
+    return async (sequenceDb: DatabaseInterface) => {
+        try {
+            await sequenceDb.query(query);
+        } catch (error) {
+            if (error.message.indexOf('duplicate column name') !== -1) {
+                return;
+            }
+            throw error;
+        }
+    };
+}
+
 export class BaseRepository<T, U = T, V = any> extends CrudRepository<T, U, V> {
     constructor(data) {
         super(data);
@@ -524,9 +537,9 @@ export class DocumentRepository extends BaseRepository<OCRDocument, Document> {
     migrations = {
         addExtra: sql`ALTER TABLE Document ADD COLUMN extra TEXT`,
         addPagesOrder: sql`ALTER TABLE Document ADD COLUMN pagesOrder TEXT`,
-        addFavorite: sql`ALTER TABLE Document ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0`,
-        addUsedDate: sql`ALTER TABLE Document ADD COLUMN usedDate BIGINT`,
-        addUseCount: sql`ALTER TABLE Document ADD COLUMN useCount INTEGER NOT NULL DEFAULT 0`,
+        addFavorite: tableColumnAlterPromise(sql`ALTER TABLE Document ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0`),
+        addUsedDate: tableColumnAlterPromise(sql`ALTER TABLE Document ADD COLUMN usedDate BIGINT`),
+        addUseCount: tableColumnAlterPromise(sql`ALTER TABLE Document ADD COLUMN useCount INTEGER NOT NULL DEFAULT 0`),
 
         updateDocSearchAccentInsensitive: (sequenceDb: DatabaseInterface) =>
             new Promise<void>(async (resolve, reject) => {
