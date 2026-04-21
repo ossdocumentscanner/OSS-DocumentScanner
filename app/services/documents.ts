@@ -1,4 +1,4 @@
-import { isObject, isString } from '@nativescript/core/utils';
+import { isObject, isString, wrapNativeException } from '@nativescript/core/utils';
 import { Optional } from '@nativescript/core/utils/typescript-utils';
 import { ApplicationSettings, EventData, File, Folder, Observable, knownFolders, path } from '@nativescript/core';
 import NSQLDatabase from '@shared/db/NSQLDatabase';
@@ -63,7 +63,8 @@ function tableColumnAlterPromise(query: SqlQuery) {
     return async (sequenceDb: DatabaseInterface) => {
         try {
             await sequenceDb.query(query);
-        } catch (error) {
+        } catch (err) {
+            const error = wrapNativeException(err);
             if (error.message.indexOf('duplicate column name') !== -1) {
                 return;
             }
