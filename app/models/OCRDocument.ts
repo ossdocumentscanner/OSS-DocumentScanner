@@ -436,7 +436,7 @@ export class OCRDocument extends Observable implements Document {
         //compute diff update
         const page = this.pages[pageIndex];
         if (page) {
-            DEV_LOG && console.log('updatePage', pageIndex, JSON.stringify(data), page.toString());
+            // DEV_LOG && console.log('updatePage', pageIndex, JSON.stringify(data), page.toString());
             if (Object.keys(data).length === 0) {
                 return;
             }
@@ -528,7 +528,7 @@ export class OCRDocument extends Observable implements Document {
 
     async updatePageCrop(pageIndex: number, quad: Quad) {
         const page = this.pages[pageIndex];
-        DEV_LOG && console.log('updatePageCrop', this.id, pageIndex, quad, page.imagePath);
+        // DEV_LOG && console.log('updatePageCrop', this.id, pageIndex, quad, page.imagePath);
         const file = File.fromPath(page.imagePath);
         const imageExportSettings = getImageExportSettings();
         const compressFormat = page.sourceImagePath.toLowerCase().endsWith('.png') ? 'png' : imageExportSettings.imageFormat;
