@@ -3,6 +3,7 @@
 #include <WhitePaperTransform2.h>
 #include <SharpenTransform.h>
 #include <FastWhitePaperTransform.h>
+#include <CardColorTransform.h>
 #include <ColorSimplificationTransform.h>
 #include <Utils.h>
 #include <jsoncons/json.hpp>
@@ -732,6 +733,14 @@ void DocumentDetector::applyTransforms(Mat &srcMat, std::string transforms, bool
                 try { fastWhitePaperTransform(srcMat, srcMat, opt); }
                 catch (const std::exception &e) {
                     // __android_log_print(ANDROID_LOG_WARN, TAG, "fastWhitePaperTransform failed: %s", e.what());
+                }
+            }
+            else if (transform.rfind("card_color", 0) == 0)
+            {
+                std::string opt = (options.size() > 1) ? options[1] : std::string();
+                try { cardColorTransform(srcMat, srcMat, opt); }
+                catch (const std::exception &e) {
+                    // __android_log_print(ANDROID_LOG_WARN, TAG, "cardColorTransform failed: %s", e.what());
                 }
             }
         }

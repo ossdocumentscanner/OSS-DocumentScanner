@@ -17,6 +17,7 @@
 #include <WhitePaperTransform2.h>
 #include <SharpenTransform.h>
 #include <FastWhitePaperTransform.h>
+#include <CardColorTransform.h>
 
 #include <Utils.h>
 #include <stack>
@@ -225,6 +226,19 @@ int fwpShadowStrengthInt = static_cast<int>(fastWhitePaperOptions.shadowStrength
 int fwpColorGainInt = static_cast<int>(fastWhitePaperOptions.colorGain * 100);           // 0-400
 int fwpColorSatThresholdInt = fastWhitePaperOptions.colorSatThreshold;                   // 0-255
 int fwpBgKernelSizeInt = fastWhitePaperOptions.bgKernelSize;                             // 3-201
+int fwpStretchBlackPct = fastWhitePaperOptions.stretchBlackPct;                          // 0-49
+int fwpStretchWhitePct = fastWhitePaperOptions.stretchWhitePct;                          // 0-49
+int fwpSharpenAmountInt = static_cast<int>(fastWhitePaperOptions.sharpenAmount * 100);   // 0-400
+int fwpSharpenRadius = fastWhitePaperOptions.sharpenRadius;                              // 1-10
+
+// Card Color options
+CardColorOptions cardColorOptions;
+int ccNbColors = cardColorOptions.nbColors;                                               // 1-20
+int ccBilateralD = cardColorOptions.bilateralD;                                          // 0-25
+int ccSigmaColorInt = static_cast<int>(cardColorOptions.bilateralSigmaColor);            // 1-250
+int ccSigmaSpaceInt = static_cast<int>(cardColorOptions.bilateralSigmaSpace);            // 1-250
+int ccBilateralIter = cardColorOptions.bilateralIterations;                              // 1-5
+int ccSatBoostInt = static_cast<int>(cardColorOptions.saturationBoost * 100);           // 0-400
 
 inline uchar reduceVal(const uchar val)
 {
@@ -518,7 +532,8 @@ public:
         WHITEPAPER_FAST,
         ENHANCE,
         COLORS,
-        SHARPEN
+        SHARPEN,
+        CARD_COLOR
     };
     
     ViewMode currentView = ViewMode::SOURCE;
@@ -535,7 +550,8 @@ public:
         {Algorithm::WHITEPAPER_FAST, "WP Fast"},
         {Algorithm::ENHANCE, "Enhance"},
         {Algorithm::COLORS, "Colors"},
-        {Algorithm::SHARPEN, "Sharpen"}
+        {Algorithm::SHARPEN, "Sharpen"},
+        {Algorithm::CARD_COLOR, "CardClr"}
     };
     
     std::map<Algorithm, bool> algorithmEnabled = {
@@ -544,7 +560,8 @@ public:
         {Algorithm::WHITEPAPER_FAST, false},
         {Algorithm::ENHANCE, false},
         {Algorithm::COLORS, false},
-        {Algorithm::SHARPEN, false}
+        {Algorithm::SHARPEN, false},
+        {Algorithm::CARD_COLOR, false}
     };
     
     void toggleAlgorithm(Algorithm algo) {
@@ -727,10 +744,10 @@ void renderUI() {
     int btnHeight = 40 * winInfo.dpiScale;
     int btnSpacing = 5 * winInfo.dpiScale;
     int btnY = (statusHeight - btnHeight) / 2;
-    int totalButtonWidth = 7 * (btnWidth + btnSpacing);
+    int totalButtonWidth = 8 * (btnWidth + btnSpacing);
     int btnX = availableWidth - totalButtonWidth - 15 * winInfo.dpiScale;
     
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 8; i++) {
         UIManager::Algorithm algo = static_cast<UIManager::Algorithm>(i);
         bool isActive = uiManager.algorithmEnabled[algo];
         Scalar btnColor = isActive ? Scalar(0, 200, 0) : Scalar(80, 80, 80);
@@ -755,7 +772,7 @@ void renderUI() {
     
     // Create help bar at full window width
     Mat helpBar(helpHeight, availableWidth, CV_8UC3, Scalar(30, 30, 30));
-    std::string helpText = "Keys: [1-4] Views | [Q-U] Algorithms | [N]ext/[P]rev Image | [Space] Settings | [ESC] Exit";
+    std::string helpText = "Keys: [1-4] Views | [Q-I] Algorithms | [N/P] Images | [Space] Detection | [Tab] Whitepaper | [`] Colors";
     float helpFontScale = 0.5f * winInfo.dpiScale;
     putText(helpBar, helpText, Point(15 * winInfo.dpiScale, 23 * winInfo.dpiScale), 
             FONT_HERSHEY_SIMPLEX, helpFontScale, Scalar(200, 200, 200), 1, LINE_AA);
@@ -861,15 +878,28 @@ void updateImage()
             detector::DocumentDetector::applyTransforms(warped, "whitepaper2_" + s);
         }
         else if (uiManager.algorithmEnabled[UIManager::Algorithm::WHITEPAPER_FAST]) {
-            // Sync options from trackbar integers
+            // Sync all FWP options from trackbar integers
             fastWhitePaperOptions.shadowStrength    = fwpShadowStrengthInt / 100.0;
             fastWhitePaperOptions.colorGain         = fwpColorGainInt / 100.0;
             fastWhitePaperOptions.colorSatThreshold = fwpColorSatThresholdInt;
+            fastWhitePaperOptions.stretchBlackPct   = fwpStretchBlackPct;
+            fastWhitePaperOptions.stretchWhitePct   = fwpStretchWhitePct;
+            fastWhitePaperOptions.sharpenAmount     = fwpSharpenAmountInt / 100.0;
+            fastWhitePaperOptions.sharpenRadius     = std::max(1, fwpSharpenRadius);
             int bgKernel = fwpBgKernelSizeInt;
             if (bgKernel < 3) bgKernel = 3;
             if (bgKernel % 2 == 0) bgKernel += 1;
             fastWhitePaperOptions.bgKernelSize = bgKernel;
             fastWhitePaperTransform(warped, warped, fastWhitePaperOptions);
+        }
+        else if (uiManager.algorithmEnabled[UIManager::Algorithm::CARD_COLOR]) {
+            cardColorOptions.nbColors             = std::max(1, ccNbColors);
+            cardColorOptions.bilateralD           = ccBilateralD;
+            cardColorOptions.bilateralSigmaColor  = ccSigmaColorInt;
+            cardColorOptions.bilateralSigmaSpace  = ccSigmaSpaceInt;
+            cardColorOptions.bilateralIterations  = std::max(1, ccBilateralIter);
+            cardColorOptions.saturationBoost      = ccSatBoostInt / 100.0;
+            cardColorTransform(warped, warped, cardColorOptions);
         }
         else if (uiManager.algorithmEnabled[UIManager::Algorithm::SHARPEN]) {
             // Sync options from trackbar integers
@@ -924,16 +954,18 @@ void on_trackbar_image(int, void *)
 JSONCONS_N_MEMBER_TRAITS(WhitePaperTransformOptions, 0, csBlackPer, csWhitePer, gaussKSize, gaussSigma, gammaValue, cbBlackPer, cbWhitePer, dogKSize, dogSigma2);
 
 bool settingsVisible = true;
+bool wpSettingsVisible = true;
+bool colorSettingsVisible = true;
 
-void createSettingsWindow() {
-    // destroyWindow("Settings");
+// Window 1: Navigation + Document Detection settings (~14 trackbars, small height)
+void createDetectionSettingsWindow() {
     namedWindow("Settings", WINDOW_NORMAL | WINDOW_KEEPRATIO);
-    resizeWindow("Settings", 350, 900);
+    resizeWindow("Settings", 350, 500);
     moveWindow("Settings", 50, 50);
-    
+
     // === NAVIGATION ===
     createTrackbar("Image Index", "Settings", &imageIndex, images.size() - 1, on_trackbar_image);
-    
+
     // === DETECTION SETTINGS ===
     createTrackbar("--- DETECTION ---", "Settings", nullptr, 1, nullptr);
     createTrackbar("Use Channel", "Settings", &useChannel, 3, on_trackbar);
@@ -943,51 +975,74 @@ void createSettingsWindow() {
     createTrackbar("Thresh", "Settings", &thresh, 300, on_trackbar);
     createTrackbar("Thresh Max", "Settings", &threshMax, 300, on_trackbar);
     createTrackbar("Contours Eps", "Settings", &contoursApproxEpsilonFactor, 100, on_trackbar);
-    
+
     // === PREPROCESSING ===
     createTrackbar("--- PREPROCESS ---", "Settings", nullptr, 1, nullptr);
     createTrackbar("Bilateral", "Settings", &bilateralFilterValue, 200, on_trackbar);
     createTrackbar("Median Blur", "Settings", &medianBlurValue, 200, on_trackbar);
-    
+
     // === HOUGH LINES ===
     createTrackbar("--- HOUGH LINES ---", "Settings", nullptr, 1, nullptr);
     createTrackbar("Threshold", "Settings", &houghLinesThreshold, 500, on_trackbar);
     createTrackbar("Min Length", "Settings", &houghLinesMinLineLength, 500, on_trackbar);
     createTrackbar("Max Gap", "Settings", &houghLinesMaxLineGap, 500, on_trackbar);
-    
-    // === WHITEPAPER OPTIONS ===
-    createTrackbar("--- WHITEPAPER ---", "Settings", nullptr, 1, nullptr);
-    createTrackbar("dogKSize", "Settings", &whitepaperOptions.dogKSize, 100, on_trackbar);
-    createTrackbar("dogSigma1", "Settings", &whitepaperOptions.dogSigma1, 200, on_trackbar);
-    createTrackbar("dogSigma2", "Settings", &whitepaperOptions.dogSigma2, 100, on_trackbar);
-    createTrackbar("csBlackPer", "Settings", &whitepaperOptions.csBlackPer, 100, on_trackbar);
-    // createTrackbar("csWhitePer", "Settings", &whitepaperOptions.csWhitePer, 100, on_trackbar);
-    createTrackbar("gaussKSize", "Settings", &whitepaperOptions.gaussKSize, 100, on_trackbar);
-    // createTrackbar("gaussSigma", "Settings", &whitepaperOptions.gaussSigma, 100, on_trackbar);
-    // createTrackbar("gammaValue", "Settings", &whitepaperOptions.gammaValue, 100, on_trackbar);
-    
-    // === COLORS OPTIONS ===
-    createTrackbar("--- COLORS ---", "Settings", nullptr, 1, nullptr);
-    createTrackbar("Resize Thresh", "Settings", &colorsResizeThreshold, 500, on_trackbar);
-    createTrackbar("Filter Dist", "Settings", &colorsFilterDistanceThreshold, 100, on_trackbar);
-    createTrackbar("Distance", "Settings", &distanceThreshold, 100, on_trackbar);
-    createTrackbar("Nb Colors", "Settings", &paletteNbColors, 20, on_trackbar);
-    createTrackbar("Color Space", "Settings", &colorSpace, 5, on_trackbar);
-    createTrackbar("Palette Space", "Settings", &paletteColorSpace, 5, on_trackbar);
+}
+
+// Window 2: Whitepaper + Sharpening settings
+void createWPSettingsWindow() {
+    namedWindow("WP Settings", WINDOW_NORMAL | WINDOW_KEEPRATIO);
+    resizeWindow("WP Settings", 350, 550);
+    moveWindow("WP Settings", 420, 50);
+
+    // === WHITEPAPER (WP1/WP2) OPTIONS ===
+    createTrackbar("--- WHITEPAPER ---", "WP Settings", nullptr, 1, nullptr);
+    createTrackbar("dogKSize", "WP Settings", &whitepaperOptions.dogKSize, 100, on_trackbar);
+    createTrackbar("dogSigma1", "WP Settings", &whitepaperOptions.dogSigma1, 200, on_trackbar);
+    createTrackbar("dogSigma2", "WP Settings", &whitepaperOptions.dogSigma2, 100, on_trackbar);
+    createTrackbar("csBlackPer", "WP Settings", &whitepaperOptions.csBlackPer, 100, on_trackbar);
+    createTrackbar("gaussKSize", "WP Settings", &whitepaperOptions.gaussKSize, 100, on_trackbar);
+
+    // === WP FAST OPTIONS ===
+    createTrackbar("--- WP FAST ---", "WP Settings", nullptr, 1, nullptr);
+    createTrackbar("Shadow x100", "WP Settings", &fwpShadowStrengthInt, 100, on_trackbar);
+    createTrackbar("ColorGain x100", "WP Settings", &fwpColorGainInt, 400, on_trackbar);
+    createTrackbar("SatThresh", "WP Settings", &fwpColorSatThresholdInt, 255, on_trackbar);
+    createTrackbar("BgKernel", "WP Settings", &fwpBgKernelSizeInt, 201, on_trackbar);
+    createTrackbar("StretchBlack%", "WP Settings", &fwpStretchBlackPct, 49, on_trackbar);
+    createTrackbar("StretchWhite%", "WP Settings", &fwpStretchWhitePct, 49, on_trackbar);
+    createTrackbar("WPF SH Amt x100", "WP Settings", &fwpSharpenAmountInt, 400, on_trackbar);
+    createTrackbar("WPF SH Radius", "WP Settings", &fwpSharpenRadius, 10, on_trackbar);
 
     // === SHARPEN OPTIONS ===
-    // amount is stored as int * 100 (0-400 -> 0.0-4.0)
-    createTrackbar("--- SHARPEN ---", "Settings", nullptr, 1, nullptr);
-    createTrackbar("SH Amount x100", "Settings", &sharpenAmountInt, 400, on_trackbar);
-    createTrackbar("SH Radius", "Settings", &sharpenRadiusInt, 10, on_trackbar);
-    createTrackbar("SH Threshold", "Settings", &sharpenThresholdInt, 255, on_trackbar);
+    createTrackbar("--- SHARPEN ---", "WP Settings", nullptr, 1, nullptr);
+    createTrackbar("SH Amount x100", "WP Settings", &sharpenAmountInt, 400, on_trackbar);
+    createTrackbar("SH Radius", "WP Settings", &sharpenRadiusInt, 10, on_trackbar);
+    createTrackbar("SH Threshold", "WP Settings", &sharpenThresholdInt, 255, on_trackbar);
+}
 
-    // === FAST WHITEPAPER OPTIONS ===
-    createTrackbar("--- WP FAST ---", "Settings", nullptr, 1, nullptr);
-    createTrackbar("FWP Shadow x100", "Settings", &fwpShadowStrengthInt, 100, on_trackbar);
-    createTrackbar("FWP ColorGain x100", "Settings", &fwpColorGainInt, 400, on_trackbar);
-    createTrackbar("FWP SatThresh", "Settings", &fwpColorSatThresholdInt, 255, on_trackbar);
-    createTrackbar("FWP BgKernel", "Settings", &fwpBgKernelSizeInt, 201, on_trackbar);
+// Window 3: Colors + Card Color settings
+void createColorSettingsWindow() {
+    namedWindow("Color Settings", WINDOW_NORMAL | WINDOW_KEEPRATIO);
+    resizeWindow("Color Settings", 350, 500);
+    moveWindow("Color Settings", 420, 630);
+
+    // === COLORS (existing) OPTIONS ===
+    createTrackbar("--- COLORS ---", "Color Settings", nullptr, 1, nullptr);
+    createTrackbar("Resize Thresh", "Color Settings", &colorsResizeThreshold, 500, on_trackbar);
+    createTrackbar("Filter Dist", "Color Settings", &colorsFilterDistanceThreshold, 100, on_trackbar);
+    createTrackbar("Distance", "Color Settings", &distanceThreshold, 100, on_trackbar);
+    createTrackbar("Nb Colors", "Color Settings", &paletteNbColors, 20, on_trackbar);
+    createTrackbar("Color Space", "Color Settings", &colorSpace, 5, on_trackbar);
+    createTrackbar("Palette Space", "Color Settings", &paletteColorSpace, 5, on_trackbar);
+
+    // === CARD COLOR OPTIONS ===
+    createTrackbar("--- CARD COLOR ---", "Color Settings", nullptr, 1, nullptr);
+    createTrackbar("CC Nb Colors", "Color Settings", &ccNbColors, 20, on_trackbar);
+    createTrackbar("CC Bilateral D", "Color Settings", &ccBilateralD, 25, on_trackbar);
+    createTrackbar("CC SigmaClr", "Color Settings", &ccSigmaColorInt, 250, on_trackbar);
+    createTrackbar("CC SigmaSpc", "Color Settings", &ccSigmaSpaceInt, 250, on_trackbar);
+    createTrackbar("CC Iterations", "Color Settings", &ccBilateralIter, 5, on_trackbar);
+    createTrackbar("CC Sat x100", "Color Settings", &ccSatBoostInt, 400, on_trackbar);
 }
 
 void handleKeyPress(int key) {
@@ -1046,6 +1101,11 @@ void handleKeyPress(int key) {
             uiManager.toggleAlgorithm(UIManager::Algorithm::SHARPEN);
             updateImage();
             break;
+        case 'i':
+        case 'I':
+            uiManager.toggleAlgorithm(UIManager::Algorithm::CARD_COLOR);
+            updateImage();
+            break;
             
         // Navigation
         case 'n':
@@ -1061,13 +1121,29 @@ void handleKeyPress(int key) {
             updateSourceImage();
             break;
             
-        // Settings toggle
+        // Settings toggles
         case ' ':
             settingsVisible = !settingsVisible;
             if (settingsVisible) {
-                createSettingsWindow();
+                createDetectionSettingsWindow();
             } else {
                 destroyWindow("Settings");
+            }
+            break;
+        case 9: // Tab
+            wpSettingsVisible = !wpSettingsVisible;
+            if (wpSettingsVisible) {
+                createWPSettingsWindow();
+            } else {
+                destroyWindow("WP Settings");
+            }
+            break;
+        case 96: // backtick `
+            colorSettingsVisible = !colorSettingsVisible;
+            if (colorSettingsVisible) {
+                createColorSettingsWindow();
+            } else {
+                destroyWindow("Color Settings");
             }
             break;
     }
@@ -1118,8 +1194,10 @@ int main(int argc, char **argv)
         cout << "Display DPI: " << dpi << ", Scale Factor: " << scale << endl;
     }
     
-    // Create settings window
-    createSettingsWindow();
+    // Create settings windows
+    createDetectionSettingsWindow();
+    createWPSettingsWindow();
+    createColorSettingsWindow();
     
     canUpdateImage = true;
     image = imread(images[imageIndex]);
@@ -1133,17 +1211,18 @@ int main(int argc, char **argv)
     cout << "  [4] Side-by-Side Compare\n\n";
     cout << "Algorithms:\n";
     cout << "  [Q] None\n";
-    cout << "  [W] Whitepaper\n";
-    cout << "  [E] Whitepaper 2\n";
-    cout << "  [R] Whitepaper Fast (shadow removal, color-preserving)\n";
+    cout << "  [W] Whitepaper (high quality, slow)\n";
+    cout << "  [E] Whitepaper 2 (fast, strong)\n";
+    cout << "  [R] Whitepaper Fast (improved: shadow removal + contrast stretch + sharpening)\n";
     cout << "  [T] Enhance\n";
-    cout << "  [Y] Colors\n";
-    cout << "  [U] Sharpen\n\n";
-    cout << "Navigation:\n";
-    cout << "  [N] Next Image\n";
-    cout << "  [P] Previous Image\n";
-    cout << "  [Space] Toggle Settings\n";
-    cout << "  [ESC] Exit\n\n";
+    cout << "  [Y] Colors (k-means palette)\n";
+    cout << "  [U] Sharpen (unsharp mask)\n";
+    cout << "  [I] Card Color (bilateral filter + k-means, gradient removal)\n\n";
+    cout << "Settings Windows:\n";
+    cout << "  [Space] Toggle Detection/Navigation settings\n";
+    cout << "  [Tab]   Toggle Whitepaper/Sharpen settings\n";
+    cout << "  [`]     Toggle Color/Card Color settings\n";
+    cout << "  [ESC]   Exit\n\n";
 
     // Track window for resize detection
     QWidget* mainWindow = nullptr;
