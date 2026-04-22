@@ -9,6 +9,20 @@ find_package( OpenCV REQUIRED PATHS ../../opencv/linux NO_DEFAULT_PATH)
 #     add_library(Tesseract::libtesseract ALIAS PkgConfig::Tesseract)
 # endif ()
 
+
+# Find Qt (try Qt6 first, fall back to Qt5)
+find_package(Qt6 COMPONENTS Core Gui Widgets Test Concurrent  OpenGLWidgets QUIET)
+if(Qt6_FOUND)
+    message(STATUS "Found Qt6")
+    set(QT_LIBRARIES Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Test Qt6::Concurrent Qt6::OpenGLWidgets)
+    set(QT_VERSION 6)
+else()
+    find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
+    message(STATUS "Found Qt5")
+    set(QT_LIBRARIES Qt5::Core Qt5::Gui Qt5::Widgets)
+    set(QT_VERSION 5)
+endif()
+
 # adjust the debug options to output more details on stdout
 add_definitions( -DVP_DEBUG -DVP_DEBUG_MODE=0 )
 
@@ -32,3 +46,19 @@ add_executable( scanner scanner.cpp src/DocumentDetector.cpp  src/WhitePaperTran
 target_link_libraries( scanner ${OpenCV_LIBS})
 # target_link_libraries( scanner ${OpenCV_LIBS} Tesseract::libtesseract)
 target_include_directories(scanner PRIVATE src/include)
+
+# Important: Add Qt include directories
+if(Qt6_FOUND)
+    target_include_directories(scanner PRIVATE ${Qt6Core_INCLUDE_DIRS} ${Qt6Gui_INCLUDE_DIRS} ${Qt6Widgets_INCLUDE_DIRS})
+else()
+    target_include_directories(scanner PRIVATE ${Qt5Core_INCLUDE_DIRS} ${Qt5Gui_INCLUDE_DIRS} ${Qt5Widgets_INCLUDE_DIRS})
+endif()
+
+# Print Qt info for debugging
+message(STATUS "Using Qt version: ${QT_VERSION}")
+message(STATUS "Qt libraries: ${QT_LIBRARIES}")
+if(Qt6_FOUND)
+    message(STATUS "Qt6 include dirs: ${Qt6Core_INCLUDE_DIRS}")
+else()
+    message(STATUS "Qt5 include dirs: ${Qt5Core_INCLUDE_DIRS}")
+endif()

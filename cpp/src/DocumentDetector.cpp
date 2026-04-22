@@ -580,7 +580,7 @@ vector<vector<cv::Point>> DocumentDetector::scanPoint(Mat &edged, Mat &image, bo
             {
                 if (borderSize > 0)
                 {
-                    points[j] -= Point(borderSize, BorderSize);
+                    points[j] -= Point(borderSize, borderSize);
                 }
                 points[j] *= resizeScale * scale;
             }
@@ -675,7 +675,7 @@ void DocumentDetector::applyTransforms(Mat &srcMat, std::string transforms, bool
                 std::string opt = (options.size() > 1) ? options[1] : std::string();
                 try { whiteboardEnhance2(srcMat, srcMat, opt); }
                 catch (const std::exception &e) {
-                    __android_log_print(ANDROID_LOG_WARN, TAG, "whitepaper2 failed: %s", e.what());
+                    // __android_log_print(ANDROID_LOG_WARN, TAG, "whitepaper2 failed: %s", e.what());
                 }
             }
             else if (transform.rfind("whitepaper", 0) == 0)
@@ -683,14 +683,14 @@ void DocumentDetector::applyTransforms(Mat &srcMat, std::string transforms, bool
                 std::string opt = (options.size() > 1) ? options[1] : std::string();
                 try { whiteboardEnhance(srcMat, srcMat, opt); }
                 catch (const std::exception &e) {
-                    __android_log_print(ANDROID_LOG_WARN, TAG, "whitepaper failed: %s", e.what());
+                    // __android_log_print(ANDROID_LOG_WARN, TAG, "whitepaper failed: %s", e.what());
                 }
             }
             else if (transform.rfind("enhance", 0) == 0)
             {
                 try { cv::detailEnhance(srcMat, srcMat, 10, 0.15); }
                 catch (const std::exception &e) {
-                    __android_log_print(ANDROID_LOG_WARN, TAG, "detailEnhance failed: %s", e.what());
+                    // __android_log_print(ANDROID_LOG_WARN, TAG, "detailEnhance failed: %s", e.what());
                 }
             }
             else if (transform.rfind("color", 0) == 0)
@@ -708,18 +708,18 @@ void DocumentDetector::applyTransforms(Mat &srcMat, std::string transforms, bool
                     if (options.size() > 3) paletteNbColors = std::stoi(options[3]);
                     if (options.size() > 4) colorSpace = static_cast<ColorSpace>(std::stoi(options[4]));
                 } catch (const std::exception &e) {
-                    __android_log_print(ANDROID_LOG_WARN, TAG, "color transform parse failed: %s", e.what());
+                    // __android_log_print(ANDROID_LOG_WARN, TAG, "color transform parse failed: %s", e.what());
                 }
                 try {
                     colorSimplificationTransform(srcMat, srcMat, useRGB, resizeThreshold, colorsFilterDistanceThreshold, distanceThreshold, paletteNbColors, colorSpace, paletteColorSpace);
                 } catch (const std::exception &e) {
-                    __android_log_print(ANDROID_LOG_WARN, TAG, "colorSimplificationTransform failed: %s", e.what());
+                    // __android_log_print(ANDROID_LOG_WARN, TAG, "colorSimplificationTransform failed: %s", e.what());
                 }
             }
         }
     }
     catch (const std::exception &e)
     {
-        __android_log_print(ANDROID_LOG_ERROR, TAG, "applyTransforms unexpected error: %s", e.what());
+        // __android_log_print(ANDROID_LOG_ERROR, TAG, "applyTransforms unexpected error: %s", e.what());
     }
  }
