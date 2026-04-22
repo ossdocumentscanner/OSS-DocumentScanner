@@ -15,6 +15,8 @@
 #include <ColorSimplificationTransform.h>
 #include <WhitePaperTransform.h>
 #include <WhitePaperTransform2.h>
+#include <SharpenTransform.h>
+#include <FastWhitePaperTransform.h>
 
 #include <Utils.h>
 #include <stack>
@@ -210,6 +212,19 @@ int textDetect1 = 70;      // 34
 int textDetect2 = 4;       // 12
 
 WhitePaperTransformOptions whitepaperOptions;
+SharpenOptions sharpenOptions;
+FastWhitePaperOptions fastWhitePaperOptions;
+
+// Integer-scaled trackbar variables for sharpenOptions (real values = int / 100)
+int sharpenAmountInt = static_cast<int>(sharpenOptions.amount * 100);   // 0-400
+int sharpenRadiusInt = sharpenOptions.radius;                             // 1-10
+int sharpenThresholdInt = sharpenOptions.threshold;                       // 0-255
+
+// Integer-scaled trackbar variables for fastWhitePaperOptions
+int fwpShadowStrengthInt = static_cast<int>(fastWhitePaperOptions.shadowStrength * 100); // 0-100
+int fwpColorGainInt = static_cast<int>(fastWhitePaperOptions.colorGain * 100);           // 0-400
+int fwpColorSatThresholdInt = fastWhitePaperOptions.colorSatThreshold;                   // 0-255
+int fwpBgKernelSizeInt = fastWhitePaperOptions.bgKernelSize;                             // 3-201
 
 inline uchar reduceVal(const uchar val)
 {
@@ -502,7 +517,8 @@ public:
         WHITEPAPER2,
         WHITEPAPER_FAST,
         ENHANCE,
-        COLORS
+        COLORS,
+        SHARPEN
     };
     
     ViewMode currentView = ViewMode::SOURCE;
@@ -516,9 +532,10 @@ public:
         {Algorithm::NONE, "None"},
         {Algorithm::WHITEPAPER, "Whitepaper"},
         {Algorithm::WHITEPAPER2, "Whitepaper 2"},
-        {Algorithm::WHITEPAPER_FAST, "Whitepaper Fast"},
+        {Algorithm::WHITEPAPER_FAST, "WP Fast"},
         {Algorithm::ENHANCE, "Enhance"},
-        {Algorithm::COLORS, "Colors"}
+        {Algorithm::COLORS, "Colors"},
+        {Algorithm::SHARPEN, "Sharpen"}
     };
     
     std::map<Algorithm, bool> algorithmEnabled = {
@@ -526,7 +543,8 @@ public:
         {Algorithm::WHITEPAPER2, false},
         {Algorithm::WHITEPAPER_FAST, false},
         {Algorithm::ENHANCE, false},
-        {Algorithm::COLORS, false}
+        {Algorithm::COLORS, false},
+        {Algorithm::SHARPEN, false}
     };
     
     void toggleAlgorithm(Algorithm algo) {
@@ -709,10 +727,10 @@ void renderUI() {
     int btnHeight = 40 * winInfo.dpiScale;
     int btnSpacing = 5 * winInfo.dpiScale;
     int btnY = (statusHeight - btnHeight) / 2;
-    int totalButtonWidth = 6 * (btnWidth + btnSpacing);
+    int totalButtonWidth = 7 * (btnWidth + btnSpacing);
     int btnX = availableWidth - totalButtonWidth - 15 * winInfo.dpiScale;
     
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 7; i++) {
         UIManager::Algorithm algo = static_cast<UIManager::Algorithm>(i);
         bool isActive = uiManager.algorithmEnabled[algo];
         Scalar btnColor = isActive ? Scalar(0, 200, 0) : Scalar(80, 80, 80);
@@ -737,7 +755,7 @@ void renderUI() {
     
     // Create help bar at full window width
     Mat helpBar(helpHeight, availableWidth, CV_8UC3, Scalar(30, 30, 30));
-    std::string helpText = "Keys: [1-4] Views | [Q-Y] Algorithms | [N]ext/[P]rev Image | [Space] Settings | [ESC] Exit";
+    std::string helpText = "Keys: [1-4] Views | [Q-U] Algorithms | [N]ext/[P]rev Image | [Space] Settings | [ESC] Exit";
     float helpFontScale = 0.5f * winInfo.dpiScale;
     putText(helpBar, helpText, Point(15 * winInfo.dpiScale, 23 * winInfo.dpiScale), 
             FONT_HERSHEY_SIMPLEX, helpFontScale, Scalar(200, 200, 200), 1, LINE_AA);
@@ -842,6 +860,24 @@ void updateImage()
             encode_json(whitepaperOptions, s, jsoncons::indenting::no_indent);
             detector::DocumentDetector::applyTransforms(warped, "whitepaper2_" + s);
         }
+        else if (uiManager.algorithmEnabled[UIManager::Algorithm::WHITEPAPER_FAST]) {
+            // Sync options from trackbar integers
+            fastWhitePaperOptions.shadowStrength    = fwpShadowStrengthInt / 100.0;
+            fastWhitePaperOptions.colorGain         = fwpColorGainInt / 100.0;
+            fastWhitePaperOptions.colorSatThreshold = fwpColorSatThresholdInt;
+            int bgKernel = fwpBgKernelSizeInt;
+            if (bgKernel < 3) bgKernel = 3;
+            if (bgKernel % 2 == 0) bgKernel += 1;
+            fastWhitePaperOptions.bgKernelSize = bgKernel;
+            fastWhitePaperTransform(warped, warped, fastWhitePaperOptions);
+        }
+        else if (uiManager.algorithmEnabled[UIManager::Algorithm::SHARPEN]) {
+            // Sync options from trackbar integers
+            sharpenOptions.amount    = sharpenAmountInt / 100.0;
+            sharpenOptions.radius    = std::max(1, sharpenRadiusInt);
+            sharpenOptions.threshold = sharpenThresholdInt;
+            sharpenTransform(warped, warped, sharpenOptions);
+        }
         else if (uiManager.algorithmEnabled[UIManager::Algorithm::ENHANCE]) {
             detector::DocumentDetector::applyTransforms(warped, "enhance");
         }
@@ -938,6 +974,20 @@ void createSettingsWindow() {
     createTrackbar("Nb Colors", "Settings", &paletteNbColors, 20, on_trackbar);
     createTrackbar("Color Space", "Settings", &colorSpace, 5, on_trackbar);
     createTrackbar("Palette Space", "Settings", &paletteColorSpace, 5, on_trackbar);
+
+    // === SHARPEN OPTIONS ===
+    // amount is stored as int * 100 (0-400 -> 0.0-4.0)
+    createTrackbar("--- SHARPEN ---", "Settings", nullptr, 1, nullptr);
+    createTrackbar("SH Amount x100", "Settings", &sharpenAmountInt, 400, on_trackbar);
+    createTrackbar("SH Radius", "Settings", &sharpenRadiusInt, 10, on_trackbar);
+    createTrackbar("SH Threshold", "Settings", &sharpenThresholdInt, 255, on_trackbar);
+
+    // === FAST WHITEPAPER OPTIONS ===
+    createTrackbar("--- WP FAST ---", "Settings", nullptr, 1, nullptr);
+    createTrackbar("FWP Shadow x100", "Settings", &fwpShadowStrengthInt, 100, on_trackbar);
+    createTrackbar("FWP ColorGain x100", "Settings", &fwpColorGainInt, 400, on_trackbar);
+    createTrackbar("FWP SatThresh", "Settings", &fwpColorSatThresholdInt, 255, on_trackbar);
+    createTrackbar("FWP BgKernel", "Settings", &fwpBgKernelSizeInt, 201, on_trackbar);
 }
 
 void handleKeyPress(int key) {
@@ -989,6 +1039,11 @@ void handleKeyPress(int key) {
         case 'y':
         case 'Y':
             uiManager.toggleAlgorithm(UIManager::Algorithm::COLORS);
+            updateImage();
+            break;
+        case 'u':
+        case 'U':
+            uiManager.toggleAlgorithm(UIManager::Algorithm::SHARPEN);
             updateImage();
             break;
             
@@ -1080,9 +1135,10 @@ int main(int argc, char **argv)
     cout << "  [Q] None\n";
     cout << "  [W] Whitepaper\n";
     cout << "  [E] Whitepaper 2\n";
-    cout << "  [R] Whitepaper Fast\n";
+    cout << "  [R] Whitepaper Fast (shadow removal, color-preserving)\n";
     cout << "  [T] Enhance\n";
-    cout << "  [Y] Colors\n\n";
+    cout << "  [Y] Colors\n";
+    cout << "  [U] Sharpen\n\n";
     cout << "Navigation:\n";
     cout << "  [N] Next Image\n";
     cout << "  [P] Previous Image\n";

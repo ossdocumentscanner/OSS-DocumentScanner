@@ -1,6 +1,8 @@
 #include <DocumentDetector.h>
 #include <WhitePaperTransform.h>
 #include <WhitePaperTransform2.h>
+#include <SharpenTransform.h>
+#include <FastWhitePaperTransform.h>
 #include <ColorSimplificationTransform.h>
 #include <Utils.h>
 #include <jsoncons/json.hpp>
@@ -714,6 +716,22 @@ void DocumentDetector::applyTransforms(Mat &srcMat, std::string transforms, bool
                     colorSimplificationTransform(srcMat, srcMat, useRGB, resizeThreshold, colorsFilterDistanceThreshold, distanceThreshold, paletteNbColors, colorSpace, paletteColorSpace);
                 } catch (const std::exception &e) {
                     // __android_log_print(ANDROID_LOG_WARN, TAG, "colorSimplificationTransform failed: %s", e.what());
+                }
+            }
+            else if (transform.rfind("sharpen", 0) == 0)
+            {
+                std::string opt = (options.size() > 1) ? options[1] : std::string();
+                try { sharpenTransform(srcMat, srcMat, opt); }
+                catch (const std::exception &e) {
+                    // __android_log_print(ANDROID_LOG_WARN, TAG, "sharpenTransform failed: %s", e.what());
+                }
+            }
+            else if (transform.rfind("whitepaper_fast", 0) == 0)
+            {
+                std::string opt = (options.size() > 1) ? options[1] : std::string();
+                try { fastWhitePaperTransform(srcMat, srcMat, opt); }
+                catch (const std::exception &e) {
+                    // __android_log_print(ANDROID_LOG_WARN, TAG, "fastWhitePaperTransform failed: %s", e.what());
                 }
             }
         }
