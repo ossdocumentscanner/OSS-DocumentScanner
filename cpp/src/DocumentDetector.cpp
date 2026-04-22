@@ -580,7 +580,7 @@ vector<vector<cv::Point>> DocumentDetector::scanPoint(Mat &edged, Mat &image, bo
             {
                 if (borderSize > 0)
                 {
-                    points[j] -= Point(borderSize, borderSize);
+                    points[j] -= Point(borderSize, BorderSize);
                 }
                 points[j] *= resizeScale * scale;
             }
@@ -658,66 +658,68 @@ std::vector<std::string> split(const std::string& str, const std::string& token)
 
 void DocumentDetector::applyTransforms(Mat &srcMat, std::string transforms, bool useRGB)
 {
-    // cout << "applyTransforms = " << transforms << endl;
-    std::vector<std::string> transformArray = split(transforms, "|");
-    for (size_t i = 0; i < transformArray.size(); i++)
-    {
-        std::string transform = transformArray[i];
-        std::vector<std::string> options = split(transform, "_");
-        if (transform.starts_with("whitepaper2"))
-        {
-            if (options.size() > 1)
-            {
-                whiteboardEnhance2(srcMat, srcMat, options[1]);
-            }
-            else
-            {
-                whiteboardEnhance2(srcMat, srcMat, "");
-            }
-        }
-        else if (transform.starts_with("whitepaper"))
-        {
-            if (options.size() > 1)
-            {
-                whiteboardEnhance(srcMat, srcMat, options[1]);
-            }
-            else
-            {
-                whiteboardEnhance(srcMat, srcMat, "");
-            }
-        }
-        else if (transform.starts_with("enhance"))
-        {
-            cv::detailEnhance(srcMat, srcMat, 10, 0.15);
-        }
-        else if (transform.starts_with("color"))
-        {
-            int resizeThreshold = 100;
-            int colorsFilterDistanceThreshold = 20;
-            int distanceThreshold = 40;
-            ColorSpace colorSpace = ColorSpace::HSV;
-            ColorSpace paletteColorSpace = ColorSpace::BGR;
-            int paletteNbColors = 5;
-            if (options.size() > 1)
-            {
-                resizeThreshold = std::stoi(options[1]);
+    if (srcMat.empty() || transforms.empty()) {
+        return;
+    }
 
-                if (options.size() > 2)
-                {
-                    distanceThreshold = std::stoi(options[2]);
+    try {
+        std::vector<std::string> transformArray = split(transforms, "|");
+        for (size_t i = 0; i < transformArray.size(); i++)
+        {
+            std::string transform = transformArray[i];
+            std::vector<std::string> options = split(transform, "_");
 
-                    if (options.size() > 3)
-                    {
-                        paletteNbColors = std::stoi(options[3]);
-
-                        if (options.size() > 4)
-                        {
-                            colorSpace = (ColorSpace)std::stoi(options[4]);
-                        }
-                    }
+            // use rfind(,0) instead of starts_with for wider compiler compatibility
+            if (transform.rfind("whitepaper2", 0) == 0)
+            {
+                std::string opt = (options.size() > 1) ? options[1] : std::string();
+                try { whiteboardEnhance2(srcMat, srcMat, opt); }
+                catch (const std::exception &e) {
+                    __android_log_print(ANDROID_LOG_WARN, TAG, "whitepaper2 failed: %s", e.what());
                 }
             }
-            colorSimplificationTransform(srcMat, srcMat, useRGB, resizeThreshold, colorsFilterDistanceThreshold, distanceThreshold, paletteNbColors, colorSpace, paletteColorSpace);
+            else if (transform.rfind("whitepaper", 0) == 0)
+            {
+                std::string opt = (options.size() > 1) ? options[1] : std::string();
+                try { whiteboardEnhance(srcMat, srcMat, opt); }
+                catch (const std::exception &e) {
+                    __android_log_print(ANDROID_LOG_WARN, TAG, "whitepaper failed: %s", e.what());
+                }
+            }
+            else if (transform.rfind("enhance", 0) == 0)
+            {
+                try { cv::detailEnhance(srcMat, srcMat, 10, 0.15); }
+                catch (const std::exception &e) {
+                    __android_log_print(ANDROID_LOG_WARN, TAG, "detailEnhance failed: %s", e.what());
+                }
+            }
+            else if (transform.rfind("color", 0) == 0)
+            {
+                // safer parsing with defaults and catching conversion errors
+                int resizeThreshold = 100;
+                int colorsFilterDistanceThreshold = 20;
+                int distanceThreshold = 40;
+                ColorSpace colorSpace = ColorSpace::HSV;
+                ColorSpace paletteColorSpace = ColorSpace::BGR;
+                int paletteNbColors = 5;
+                try {
+                    if (options.size() > 1) resizeThreshold = std::stoi(options[1]);
+                    if (options.size() > 2) distanceThreshold = std::stoi(options[2]);
+                    if (options.size() > 3) paletteNbColors = std::stoi(options[3]);
+                    if (options.size() > 4) colorSpace = static_cast<ColorSpace>(std::stoi(options[4]));
+                } catch (const std::exception &e) {
+                    __android_log_print(ANDROID_LOG_WARN, TAG, "color transform parse failed: %s", e.what());
+                }
+                try {
+                    colorSimplificationTransform(srcMat, srcMat, useRGB, resizeThreshold, colorsFilterDistanceThreshold, distanceThreshold, paletteNbColors, colorSpace, paletteColorSpace);
+                } catch (const std::exception &e) {
+                    __android_log_print(ANDROID_LOG_WARN, TAG, "colorSimplificationTransform failed: %s", e.what());
+                }
+            }
         }
     }
-}
+    catch (const std::exception &e)
+    {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "applyTransforms unexpected error: %s", e.what());
+    }
+ }
