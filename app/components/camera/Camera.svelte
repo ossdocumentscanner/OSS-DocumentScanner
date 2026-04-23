@@ -493,9 +493,12 @@
 
     function updateFloatZoom(value) {
         floatZoom = value;
-        const zoomPercent = (floatZoom - minZoom) / (maxZoom - minZoom);
-        const parentWidth = Utils.layout.toDeviceIndependentPixels(zoomSlider.nativeView.getMeasuredWidth()) - 40;
-        zoomPercentDelta = parentWidth * zoomPercent;
+        const view = zoomSlider?.nativeView;
+        if (view) {
+            const zoomPercent = (floatZoom - minZoom) / (maxZoom - minZoom);
+            const parentWidth = Utils.layout.toDeviceIndependentPixels(view.getMeasuredWidth()) - 40;
+            zoomPercentDelta = parentWidth * zoomPercent;
+        }
     }
     function onZoomValue(e) {
         updateFloatZoom(e.value);
@@ -770,12 +773,12 @@
             {#if !onlyForOCR}
                 <IconButton
                     colSpan={2}
-                    rounded={false}
                     color="white"
                     horizontalAlignment="left"
                     isSelected={batchMode}
                     marginLeft={16}
                     marginTop={20}
+                    rounded={false}
                     selectedColor={colorPrimary}
                     subtitle={lc('batch_mode')}
                     text={batchMode ? 'mdi-image-multiple' : 'mdi-image'}
