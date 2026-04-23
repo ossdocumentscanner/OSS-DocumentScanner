@@ -891,7 +891,9 @@ export class DocumentsService extends Observable {
             this.db = new NSQLDatabase(filePath, {
                 // for now it breaks
                 // threading: true,
-                transformBlobs: false
+                transformBlobs: false,
+                //TODO: it seems ocrData can be sometimes too big. Maybe the best would be not to store it in db
+                cursorWindowSize: 4 * 1024 * 1024
             } as any);
         }
 
