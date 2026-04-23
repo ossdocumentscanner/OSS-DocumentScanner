@@ -29,6 +29,7 @@
         AUTO_SCAN_DURATION,
         AUTO_SCAN_ENABLED,
         CROP_ENABLED,
+        DEFAULT_CARD_ALWAYS_SHOW_NAME,
         DEFAULT_DRAW_FOLDERS_BACKGROUND,
         DEFAULT_EXPORT_DIRECTORY,
         DEFAULT_FONT_CAM_MIRRORED,
@@ -50,6 +51,7 @@
         PDF_IMPORT_IMAGES,
         PREVIEW_RESIZE_THRESHOLD,
         SETTINGS_ALWAYS_PROMPT_CROP_EDIT,
+        SETTINGS_CARD_ALWAYS_SHOW_NAME,
         SETTINGS_CROP_ENABLED,
         SETTINGS_DOCUMENT_NAME_FORMAT,
         SETTINGS_DRAW_FOLDERS_BACKGROUND,
@@ -686,7 +688,14 @@
                 ]
                     .concat(
                         CARD_APP
-                            ? []
+                            ? [
+                                  {
+                                      type: 'switch',
+                                      id: SETTINGS_CARD_ALWAYS_SHOW_NAME,
+                                      title: lc('always_show_card_name'),
+                                      value: ApplicationSettings.getBoolean(SETTINGS_CARD_ALWAYS_SHOW_NAME, DEFAULT_CARD_ALWAYS_SHOW_NAME)
+                                  }
+                              ]
                             : [
                                   {
                                       id: 'setting',
