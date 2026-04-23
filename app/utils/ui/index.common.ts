@@ -748,7 +748,7 @@ export async function showPDFPopoverMenu({
                                     const jpegQuality = componentInstanceInfo.viewInstance.jpegQuality;
                                     const folder = componentInstanceInfo.viewInstance.folder;
                                     showLoading(lc('exporting'));
-                                    DEV_LOG && console.log('exportPDF', folder, filename, jpegQuality, password);
+                                    DEV_LOG && console.log('exportPDF', folder, filename, jpegQuality, !!password);
                                     const filePath = await exportPDFAsync({
                                         pages,
                                         document,
