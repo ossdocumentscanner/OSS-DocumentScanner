@@ -8,7 +8,7 @@
     import { TextField, TextFieldProperties } from '@nativescript-community/ui-material-textfield';
     import { TextView } from '@nativescript-community/ui-material-textview';
     import { ApplicationSettings, File, ObservableArray, Page, ScrollView, StackLayout, Utils, View, knownFolders, path } from '@nativescript/core';
-    import { Sentry } from '@shared/utils/sentry';
+    import { Sentry, startSentry, stopSentry } from '@shared/utils/sentry';
     import { showError } from '@shared/utils/showError';
     import { navigate } from '@shared/utils/svelte/ui';
     import dayjs from 'dayjs';
@@ -55,6 +55,7 @@
         SETTINGS_CROP_ENABLED,
         SETTINGS_DOCUMENT_NAME_FORMAT,
         SETTINGS_DRAW_FOLDERS_BACKGROUND,
+        SETTINGS_ENABLE_CRASH_REPORT,
         SETTINGS_FILE_NAME_FORMAT,
         SETTINGS_FILE_NAME_USE_DOCUMENT_NAME,
         SETTINGS_FONT_CAM_MIRRORED,
@@ -538,6 +539,18 @@
                         description: lc('pdf_sync_desc')
                     }
                 ];
+            case 'debugging':
+                return PLAY_STORE_BUILD
+                    ? [
+                          {
+                              type: 'switch',
+                              id: SETTINGS_ENABLE_CRASH_REPORT,
+                              title: lc('crash_report'),
+                              description: lc('crash_report_desc'),
+                              value: ApplicationSettings.getBoolean(SETTINGS_ENABLE_CRASH_REPORT, PLAY_STORE_BUILD)
+                          }
+                      ]
+                    : [];
             case 'document_naming':
                 return [
                     {
@@ -903,6 +916,19 @@
                         options: () => getSubSettings('sync')
                     }
                 ])
+                .concat(
+                    PLAY_STORE_BUILD
+                        ? [
+                              {
+                                  id: 'sub_settings',
+                                  icon: 'mdi-bug-outline',
+                                  title: lc('debugging'),
+                                  description: lc('debugging_settings_desc'),
+                                  options: () => getSubSettings('debugging')
+                              }
+                          ]
+                        : []
+                )
                 .concat([
                     {
                         id: 'third_party',
@@ -1513,6 +1539,15 @@
                 case 'quicktoggle': {
                     if (__ANDROID__) {
                         toggleQuickSetting(value);
+                    }
+                    break;
+                }
+                case SETTINGS_ENABLE_CRASH_REPORT: {
+                    ApplicationSettings.setBoolean(item.key || item.id, value);
+                    if (value) {
+                        startSentry();
+                    } else {
+                        stopSentry();
                     }
                     break;
                 }

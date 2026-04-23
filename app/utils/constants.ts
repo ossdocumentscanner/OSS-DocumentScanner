@@ -45,6 +45,7 @@ export const SETTINGS_ROOT_DATA_FOLDER = 'root_data_folder';
 export const SETTINGS_QUICK_TOGGLE_ENABLED = 'quick_toggle_enabled';
 export const SETTINGS_OCR_COPY_USE_SPACE = 'ocr_copy_use_space';
 export const SETTINGS_CARD_ALWAYS_SHOW_NAME = 'card_always_show_name';
+export const SETTINGS_ENABLE_CRASH_REPORT = 'enable_crash_report';
 
 export const TRANSFORMS_SPLIT = '|';
 
