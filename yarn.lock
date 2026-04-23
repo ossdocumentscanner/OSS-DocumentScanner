@@ -1153,15 +1153,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nativescript-community/sqlite@npm:3.5.7":
-  version: 3.5.7
-  resolution: "@nativescript-community/sqlite@npm:3.5.7"
+"@nativescript-community/sqlite@npm:3.5.8":
+  version: 3.5.8
+  resolution: "@nativescript-community/sqlite@npm:3.5.8"
   dependencies:
     "@nativescript/hook": "npm:~2.0.0"
   peerDependencies:
     "@nano-sql/core": ^2.3.7
     typeorm: ^0.3.17
-  checksum: 10/731b60906b333e047cf6f8b82d539dbef238ba157fbcc0e192a56d6a8e3251a571d7a9d2353bb1f5f9efe05c8c5df9c073aee4919e4795daf244dc8661ace30b
+  checksum: 10/f47badab528f42a2ff13b2b87f351258e3f41f4f8748158bfb0783860faed7dfbfb153d787dca742a0eaa9af2b7f664052fde8301ce08d80304ee2fb98770119
   languageName: node
   linkType: hard
 
@@ -10400,7 +10400,7 @@ __metadata:
     "@nativescript-community/perms": "npm:3.0.11"
     "@nativescript-community/preferences": "npm:1.3.2"
     "@nativescript-community/sentry": "npm:4.6.45"
-    "@nativescript-community/sqlite": "npm:3.5.7"
+    "@nativescript-community/sqlite": "npm:3.5.8"
     "@nativescript-community/svelte-native": "npm:1.0.32"
     "@nativescript-community/systemui": "npm:1.1.24"
     "@nativescript-community/text": "npm:1.6.24"
