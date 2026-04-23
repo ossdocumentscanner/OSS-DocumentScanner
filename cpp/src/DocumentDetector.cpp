@@ -126,6 +126,9 @@ bool computeIntersection(const Vec4i &line1, const Vec4i &line2, Point &r)
 
     float cross = d1.x * d2.y - d1.y * d2.x;
 
+    if (std::abs(cross) < 1e-5f) {
+        return false;
+    }
     double t1 = (x.x * d2.y - x.y * d2.x) / cross;
     r = o1 + d1 * t1;
     if (r.x >= 0 && r.y >= 0)
@@ -499,8 +502,8 @@ vector<vector<cv::Point>> DocumentDetector::scanPoint(Mat &edged, Mat &image, bo
         temp1 = image;
     }
 
-    cv::Mat dilateStruct = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(options.dilateAnchorSize, options.dilateAnchorSize));
-    cv::Mat morphologyStruct = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(options.morphologyAnchorSize, options.morphologyAnchorSize));
+    cv::Mat dilateStruct = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(std::max(1, (int)options.dilateAnchorSize), std::max(1, (int)options.dilateAnchorSize)));
+    cv::Mat morphologyStruct = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(std::max(1, (int)options.morphologyAnchorSize), std::max(1, (int)options.morphologyAnchorSize)));
     int channelsCount = std::min(image.channels(), 3);
     int i = channelsCount - 1;
     int minI = 0;
@@ -519,9 +522,6 @@ vector<vector<cv::Point>> DocumentDetector::scanPoint(Mat &edged, Mat &image, bo
         //  std::printf("testing on channel %i %i\n", i, iterration);
         cv::extractChannel(temp1, temp2, i);
 
-        Mat out;
-        // bilateralFilter is really slow so for now we dont use it
-        cv::bilateralFilter(temp2, out, 15, options.bilateralFilterValue, options.bilateralFilterValue);
         cv::threshold(temp2, edged, options.thresh, options.threshMax, cv::THRESH_BINARY);
         cv::morphologyEx(edged, edged, cv::MORPH_CLOSE, morphologyStruct);
         cv::dilate(edged, edged, dilateStruct);
@@ -622,7 +622,10 @@ Mat DocumentDetector::resizeImageToSize(int size)
         copyMakeBorder(image, resizedBitmap, borderSize, borderSize, borderSize, borderSize, BORDER_CONSTANT, Scalar(0, 0, 0));
         return resizedBitmap;
     }
-    return image;
+    // Return a clone so the caller's Mat does not alias this->image.
+    // Without this, an in-place rotate() in scanPoint() would silently mutate
+    // the image passed into the DocumentDetector constructor.
+    return image.clone();
 }
 Mat DocumentDetector::resizeImage()
 {
