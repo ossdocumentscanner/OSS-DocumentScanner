@@ -227,10 +227,15 @@
     }
 
     export async function refresh(force = true, filter?: string) {
-        // DEV_LOG && console.log('refresh', force, filter);
+        // if (!shown) {
+        //     needsRefreshOnBack = true;
+        //     return;
+        // }
+        DEV_LOG && console.log('refresh', force, filter);
         if (loading || (!force && lastRefreshFilter === filter) || !documentsService.started) {
             return;
         }
+        DEV_LOG && console.log('refresh1', force, filter);
         lastRefreshFilter = filter;
         nbSelected = 0;
         loading = true;
@@ -355,8 +360,8 @@
             } else {
                 const item = documents?.getItem(index);
                 if (item) {
-                    DEV_LOG && console.log('onDocumentUpdated1', item.doc.favorite, doc.favorite);
-                    if (event.updateFavorite) {
+                    DEV_LOG && console.log('onDocumentUpdated1', [...event.changedProps], sortOrder, event.changedProps.has('name'), sortOrder.startsWith('name'));
+                    if (event.changedProps.has('favorite') || (event.changedProps.has('name') && sortOrder.startsWith('name'))) {
                         refresh();
                     } else {
                         item.doc = event.doc;
@@ -500,7 +505,10 @@
             showError(error);
         }
     }
+    // let needsRefreshOnBack = false;
+    // let shown = false;
     async function onNavigatedTo(e: NavigatedData) {
+        // shown = true;
         DEV_LOG && console.log('onNavigatedTo', e.isBackNavigation, sortOrder);
         if (!e.isBackNavigation) {
             if (documentsService.started) {
@@ -511,6 +519,10 @@
         } else if (sortOrder.startsWith('useCount')) {
             refresh();
         }
+    }
+    function onNavigatingFrom() {
+        // shown = false;
+        search.unfocusSearch();
     }
     function selectItem(item: Item) {
         if (!item.selected) {
@@ -1207,7 +1219,7 @@
     );
 </script>
 
-<page bind:this={page} id="documentList" actionBarHidden={true} on:navigatedTo={onNavigatedTo} on:navigatingFrom={() => search.unfocusSearch()}>
+<page bind:this={page} id="documentList" actionBarHidden={true} on:navigatedTo={onNavigatedTo} on:navigatingFrom={onNavigatingFrom}>
     <gridlayout class="pageContent" rows="auto,auto,*">
         <slot name="abovecollectionview" />
         <collectionView

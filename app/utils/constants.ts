@@ -142,6 +142,7 @@ export const EVENT_DOCUMENT_DELETED = 'documentsDeleted';
 export const EVENT_DOCUMENT_PAGES_ADDED = 'documentPagesAdded';
 export const EVENT_DOCUMENT_PAGE_DELETED = 'documentPageDeleted';
 export const EVENT_DOCUMENT_PAGE_UPDATED = 'documentPageUpdated';
+export const EVENT_DOCUMENT_USE_COUNT = 'documentUseCount';
 export const EVENT_FOLDER_UPDATED = 'folderUpdated';
 export const EVENT_FOLDER_ADDED = 'folderAdded';
 

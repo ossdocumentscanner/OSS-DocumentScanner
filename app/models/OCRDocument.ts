@@ -82,7 +82,7 @@ export class DocFolder {
         await documentsService.folderRepository.update(this, data);
         Object.assign(this, data);
         if (notify) {
-            documentsService.notify({ eventName: EVENT_FOLDER_UPDATED, folder: this } as FolderUpdatedEventData);
+            documentsService.notify({ eventName: EVENT_FOLDER_UPDATED, folder: this, changedProps: new Set(Object.keys(data)) } as FolderUpdatedEventData);
         }
     }
 
@@ -504,7 +504,11 @@ export class OCRDocument extends Observable implements Document {
         }
         await documentsService.documentRepository.update(this, data, updateModifiedDate);
         if (notify) {
-            documentsService.notify({ eventName: EVENT_DOCUMENT_UPDATED, doc: this, updateModifiedDate, ...eventData } as DocumentUpdatedEventData);
+            const changedProps = new Set(Object.keys(data));
+            if (updateModifiedDate) {
+                changedProps.add('modifiedDate');
+            }
+            documentsService.notify({ eventName: EVENT_DOCUMENT_UPDATED, doc: this, updateModifiedDate, changedProps, ...eventData } as DocumentUpdatedEventData);
         }
     }
 

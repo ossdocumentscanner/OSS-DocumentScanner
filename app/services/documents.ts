@@ -7,7 +7,7 @@ import SqlQuery from 'kiss-orm/dist/Queries/SqlQuery';
 import CrudRepository from 'kiss-orm/dist/Repositories/CrudRepository';
 import { DocFolder, Document, IDocFolder, OCRDocument, OCRPage, Page, Tag } from '~/models/OCRDocument';
 import { PKPass, PKPassType } from '~/models/PKPass';
-import { EVENT_DOCUMENT_DELETED, SETTINGS_ROOT_DATA_FOLDER } from '~/utils/constants';
+import { EVENT_DOCUMENT_DELETED, EVENT_DOCUMENT_USE_COUNT, SETTINGS_ROOT_DATA_FOLDER } from '~/utils/constants';
 import { groupByArray } from '@shared/utils';
 import DatabaseInterface from 'kiss-orm/dist/Databases/DatabaseInterface';
 import QueryIdentifier from 'kiss-orm/dist/Queries/QueryIdentifier';
@@ -643,6 +643,7 @@ export class DocumentRepository extends BaseRepository<OCRDocument, Document> {
         await super.update(document, { usedDate, useCount });
         document.usedDate = usedDate;
         document.useCount = useCount;
+        documentsService.notify({ eventName: EVENT_DOCUMENT_USE_COUNT, documents: [document] } as SingleDocumentEventData);
     }
     async addTag(document: OCRDocument, tagId: string) {
         try {
@@ -780,38 +781,34 @@ LEFT JOIN
 
 export type DocumentEventData = Optional<EventData<Observable>, 'object'> & { fromWorker?: true };
 
-export interface DocumentAddedEventData extends DocumentEventData {
+export interface SingleDocumentEventData extends DocumentEventData {
     doc?: OCRDocument;
     folder?: DocFolder;
 }
-export interface DocumentMovedFolderEventData extends DocumentEventData {
-    doc?: OCRDocument;
-    folder?: DocFolder;
+export type DocumentAddedEventData = SingleDocumentEventData;
+export interface DocumentMovedFolderEventData extends SingleDocumentEventData {
     oldFolderId?: number;
 }
 export interface DocumentFolderAddedEventData extends DocumentEventData {
     folder?: DocFolder;
 }
-export interface DocumentPagesAddedEventData extends DocumentEventData {
-    doc?: OCRDocument;
+export interface FolderUpdatedEventData extends DocumentEventData {
+    folder?: DocFolder;
+    changedProps: Set<string>;
+}
+export interface DocumentPagesAddedEventData extends SingleDocumentEventData {
     pages?: OCRPage[];
 }
-export interface DocumentPageDeletedEventData extends DocumentEventData {
-    doc?: OCRDocument;
+export interface DocumentPageDeletedEventData extends SingleDocumentEventData {
     pageIndex?: number;
 }
-export interface DocumentPageUpdatedEventData extends DocumentEventData {
-    doc?: OCRDocument;
+export interface DocumentPageUpdatedEventData extends SingleDocumentEventData {
     pageIndex?: number;
     imageUpdated?: boolean;
 }
-export interface DocumentUpdatedEventData extends DocumentEventData {
-    doc?: OCRDocument;
+export interface DocumentUpdatedEventData extends SingleDocumentEventData {
     updateModifiedDate?: boolean;
-    updateFavorite?: boolean;
-}
-export interface FolderUpdatedEventData extends DocumentEventData {
-    folder?: DocFolder;
+    changedProps: Set<string>;
 }
 export interface DocumentDeletedEventData extends DocumentEventData {
     documents?: OCRDocument[];
