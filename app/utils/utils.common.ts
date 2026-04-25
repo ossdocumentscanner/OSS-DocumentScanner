@@ -15,7 +15,7 @@ export function omit<T extends object, U extends keyof T>(object: T, ...props: U
 }
 
 export function cleanFilename(str, wsRep = (w) => '_') {
-    return str.replace(/[\x00-\x1f\x7f"*\/:<>?\\|\0x7f]+/g, wsRep).replace(/\s/g, wsRep);
+    return str.replace(/[\x00-\x1f\x7f"*\/<>?\\|\0x7f]+/g, wsRep).replace(/\s/g, wsRep);
 }
 export function getFormatedDateForFilename(value?: number, dateFormat = ApplicationSettings.getString(SETTINGS_FILE_NAME_FORMAT, FILENAME_DATE_FORMAT), clean = true) {
     const now = dayjs(value);
