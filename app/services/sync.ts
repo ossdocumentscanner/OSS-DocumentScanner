@@ -305,7 +305,7 @@ export class SyncService extends BaseWorkerHandler<SyncWorker> {
                 // } else {
                 eventData = otherProps;
                 // }
-                DEV_LOG && console.warn('syncDocumentsInternal', data.type, data.fromEvent, Object.keys(otherProps));
+                DEV_LOG && console.log('syncDocumentsInternal', data.type, data.fromEvent, Object.keys(otherProps));
             }
             await this.sendMessageToWorker(
                 'sync',

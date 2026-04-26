@@ -866,7 +866,7 @@
                             editingTitle = true;
                             break;
                         case 'favorite':
-                            await document.save({ favorite: document.favorite === 1 ? 0 : 1 }, false, true, { updateFavorite: true });
+                            await document.save({ favorite: document.favorite === 1 ? 0 : 1 }, false, true);
                             break;
                         case 'share':
                             await showImagePopoverMenu(geAllPages(), event.object);

@@ -27,7 +27,7 @@ __metadata:
 
 "@akylas/nativescript-app-tools@file:tools::locator=root-workspace-0b6124%40workspace%3A.":
   version: 1.0.0
-  resolution: "@akylas/nativescript-app-tools@file:tools#tools::hash=8cae64&locator=root-workspace-0b6124%40workspace%3A."
+  resolution: "@akylas/nativescript-app-tools@file:tools#tools::hash=f87263&locator=root-workspace-0b6124%40workspace%3A."
   dependencies:
     "@dotenvx/dotenvx": "npm:1.51.4"
     "@nativescript-community/fontmin": "npm:0.9.11"
@@ -81,7 +81,7 @@ __metadata:
     typescript: "npm:5.9.3"
     typescript-eslint: "npm:8.53.0"
     webpack-bundle-analyzer: "npm:4.10.2"
-  checksum: 10/b4a8b1e01e3a6bd603bada1ede4700d1e23c04070a85b90f95fcea8db5977fe781d369d46f8bd9bede125263d04ab51aa86a523e88265978d12bca598f5f07fd
+  checksum: 10/0b76c43cafebda23a3a933bc97cb4c37b1eb1641f086a50533ad807e1489f2318daa8f3d7309e51ada9e6c34bddab0679181df479ce05a96be96e7d47afbe529
   languageName: node
   linkType: hard
 
@@ -1013,12 +1013,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nativescript-community/gesturehandler@npm:2.0.43":
-  version: 2.0.43
-  resolution: "@nativescript-community/gesturehandler@npm:2.0.43"
+"@nativescript-community/gesturehandler@npm:2.0.44":
+  version: 2.0.44
+  resolution: "@nativescript-community/gesturehandler@npm:2.0.44"
   dependencies:
     "@nativescript-community/observable": "npm:^2.0.10"
-  checksum: 10/1b11367a8ea5377382fdd9f5636b12ca2ca86103edc53b73c6a9004e257e9adb1b14604b401c9928d38f2ab5d11965b29ce473f97adcb1c881e89db0086d7a57
+  checksum: 10/59c424a1c2f731ae2a600a20455d05e8b647763f8fc81006de6eeb1c2d6012ea6df83fd773b0f90da6599a9db106826806a32be69efb91debc639179e5c577d6
   languageName: node
   linkType: hard
 
@@ -1153,15 +1153,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nativescript-community/sqlite@npm:3.5.1":
-  version: 3.5.1
-  resolution: "@nativescript-community/sqlite@npm:3.5.1"
+"@nativescript-community/sqlite@npm:3.5.8":
+  version: 3.5.8
+  resolution: "@nativescript-community/sqlite@npm:3.5.8"
   dependencies:
     "@nativescript/hook": "npm:~2.0.0"
   peerDependencies:
     "@nano-sql/core": ^2.3.7
     typeorm: ^0.3.17
-  checksum: 10/bb886c44e5478955197b3b9296db8e55bbcb7abb90be5475cf58e8ee94c6d32315e4e76e333646e6b68a47f5ce0081eb1b4697b9d6957588c4a104c717898d84
+  checksum: 10/f47badab528f42a2ff13b2b87f351258e3f41f4f8748158bfb0783860faed7dfbfb153d787dca742a0eaa9af2b7f664052fde8301ce08d80304ee2fb98770119
   languageName: node
   linkType: hard
 
@@ -1203,10 +1203,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nativescript-community/ui-cameraview@npm:*, @nativescript-community/ui-cameraview@npm:0.6.2":
+"@nativescript-community/ui-cameraview@npm:*":
   version: 0.6.2
   resolution: "@nativescript-community/ui-cameraview@npm:0.6.2"
   checksum: 10/84dce87b13c6f16049cd0bab55b681f44942878655a0802c930d15ecc067253ed708f5c2b775c7a11a47f6abd9c98da63f01fb81cce8fbb6606d9d1c54e4a3f8
+  languageName: node
+  linkType: hard
+
+"@nativescript-community/ui-cameraview@npm:0.6.3":
+  version: 0.6.3
+  resolution: "@nativescript-community/ui-cameraview@npm:0.6.3"
+  checksum: 10/147a9f3268e4da4835d2def6fd3a76160b86347fde82496efc5d0654e92ed30c25fa5bca1177d35272abf2e42f94f6e88128131675dd34f72ae7f59b50a1537c
   languageName: node
   linkType: hard
 
@@ -10385,7 +10392,7 @@ __metadata:
     "@nativescript-community/arraybuffers": "npm:1.1.5"
     "@nativescript-community/css-theme": "npm:1.2.14"
     "@nativescript-community/extendedinfo": "npm:1.3.1"
-    "@nativescript-community/gesturehandler": "npm:2.0.43"
+    "@nativescript-community/gesturehandler": "npm:2.0.44"
     "@nativescript-community/https": "npm:4.1.32"
     "@nativescript-community/l": "npm:4.3.11"
     "@nativescript-community/licenses": "npm:2.0.9"
@@ -10393,11 +10400,11 @@ __metadata:
     "@nativescript-community/perms": "npm:3.0.11"
     "@nativescript-community/preferences": "npm:1.3.2"
     "@nativescript-community/sentry": "npm:4.6.45"
-    "@nativescript-community/sqlite": "npm:3.5.1"
+    "@nativescript-community/sqlite": "npm:3.5.8"
     "@nativescript-community/svelte-native": "npm:1.0.32"
     "@nativescript-community/systemui": "npm:1.1.24"
     "@nativescript-community/text": "npm:1.6.24"
-    "@nativescript-community/ui-cameraview": "npm:0.6.2"
+    "@nativescript-community/ui-cameraview": "npm:0.6.3"
     "@nativescript-community/ui-canvas": "npm:4.6.46"
     "@nativescript-community/ui-canvaslabel": "npm:1.2.49"
     "@nativescript-community/ui-checkbox": "npm:2.0.18"
