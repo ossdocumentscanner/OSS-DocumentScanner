@@ -20,7 +20,16 @@ import {
     SETTINGS_SYNC_SERVICES
 } from '~/utils/constants';
 import type SyncWorker from '~/workers/SyncWorker';
-import { DocumentAddedEventData, DocumentDeletedEventData, DocumentEvents, DocumentPagesAddedEventData, DocumentUpdatedEventData, FolderUpdatedEventData, documentsService } from './documents';
+import {
+    DocumentAddedEventData,
+    DocumentDeletedEventData,
+    DocumentEventData,
+    DocumentEvents,
+    DocumentPagesAddedEventData,
+    DocumentUpdatedEventData,
+    FolderUpdatedEventData,
+    documentsService
+} from './documents';
 import { SYNC_TYPES, SyncType, getRemoteDeleteDocumentSettingsKey } from './sync/types';
 import { getStoredSyncServices } from '~/services/sync/BaseSyncService';
 
@@ -160,7 +169,7 @@ export class SyncService extends BaseWorkerHandler<SyncWorker> {
         // only used for image sync
         this.syncDocumentsInternal({ event, type: SyncType.IMAGE | SyncType.PDF, fromEvent: event.eventName });
     }
-    sendDataEvent(event: FolderUpdatedEventData) {
+    sendDataEvent(event: DocumentEventData) {
         if (event.fromWorker !== true) {
             this.syncDocumentsInternal({ event, type: SyncType.DATA, fromEvent: event.eventName });
         }
