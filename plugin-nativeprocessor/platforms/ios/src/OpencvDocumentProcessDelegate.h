@@ -13,7 +13,7 @@
 @property (nonatomic, assign) NSInteger  previewResizeThreshold;
 @property (nonatomic, assign) BOOL  detectDocuments;
 @property (nonatomic, assign) BOOL  detectQRCode;
-@property (nonatomic, assign) NSString* _Nullable  detectQRCodeOptions;
+@property (nonatomic, copy) NSString* _Nullable  detectQRCodeOptions;
 
 - (instancetype _Nonnull )initWithCropView:(NSCropView*_Nonnull) view;
 - (instancetype _Nonnull )initWithCropView:(NSCropView*_Nonnull) view onQRCode:(id<OnQRCode>_Nonnull)onQRCode;

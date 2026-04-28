@@ -3,6 +3,14 @@
 
 #import <QuartzCore/QuartzCore.h>
 
+@interface OpencvDocumentProcessDelegate ()
+// Semaphore used to drop incoming camera frames when a previous frame is still
+// being processed, preventing unbounded queuing of heavy OpenCV work.
+@property (nonatomic, strong) dispatch_semaphore_t frameSemaphore;
+// Cached CIContext – creating one per frame is very expensive.
+@property (nonatomic, strong) CIContext *ciContext;
+@end
+
 #import <opencv2/opencv.hpp>
 #import <DocumentDetector.h>
 #import <DocumentOCR.h>
@@ -13,18 +21,32 @@
 
 @implementation OpencvDocumentProcessDelegate
 
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _frameSemaphore = dispatch_semaphore_create(1);
+  }
+  return self;
+}
+
 - (instancetype)initWithCropView:(NSCropView*) view{
-  self.cropView = view;
-  self.previewResizeThreshold = 300;
-  self.autoScanHandler = nil;
-  self.detectDocuments = true;
-  self.detectQRCodeOptions = @"{\"resizeThreshold\":500}";
-  self.detectQRCode = false;
-  return [self init];
+  self = [self init];
+  if (self) {
+    self.cropView = view;
+    self.previewResizeThreshold = 300;
+    self.autoScanHandler = nil;
+    self.detectDocuments = true;
+    self.detectQRCodeOptions = @"{\"resizeThreshold\":500}";
+    self.detectQRCode = false;
+  }
+  return self;
 }
 - (instancetype)initWithCropView:(NSCropView*) view onQRCode:(id<OnQRCode>)onQRCode {
-  self.onQRCode = onQRCode;
-  return [self initWithCropView:view];
+  self = [self initWithCropView:view];
+  if (self) {
+    self.onQRCode = onQRCode;
+  }
+  return self;
 }
 
 - (NSObject*) autoScanHandler
@@ -109,9 +131,7 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
   {
     m.create(rows, cols, CV_8UC1); // 8 bits per component, 1 channel
     bitmapInfo = kCGImageAlphaNone;
-    if (!alphaExist)
-      bitmapInfo = kCGImageAlphaNone;
-    else
+    if (alphaExist)
       m = cv::Scalar(0);
     contextRef = CGBitmapContextCreate(m.data, m.cols, m.rows, 8,
                                        m.step[0], colorSpace,
@@ -144,13 +164,18 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
                                        m.step[0], colorSpace,
                                        bitmapInfo);
   }
+  if (contextRef == NULL) {
+    return;
+  }
   CGContextDrawImage(contextRef, CGRectMake(0, 0, cols, rows),
                      image);
   CGContextRelease(contextRef);
 }
 -(UIImage*) imageFromCIImage:(CIImage*)cmage {
-  CIContext *context = [CIContext contextWithOptions:nil];
-  CGImageRef cgImage = [context createCGImage:cmage fromRect:[cmage extent]];
+  if (!self.ciContext) {
+    self.ciContext = [CIContext contextWithOptions:nil];
+  }
+  CGImageRef cgImage = [self.ciContext createCGImage:cmage fromRect:[cmage extent]];
   UIImage* uiImage = [UIImage imageWithCGImage:cgImage];
   CGImageRelease(cgImage);
   return uiImage;
@@ -168,13 +193,14 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
 
 - (cv::Mat) matFromImageBuffer: (CVImageBufferRef) buffer {
   cv::Mat mat ;
-  CVPixelBufferLockBaseAddress(buffer, 0);
+  CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
   void *address = CVPixelBufferGetBaseAddress(buffer);
   int width = (int) CVPixelBufferGetWidth(buffer);
   int height = (int) CVPixelBufferGetHeight(buffer);
   mat = cv::Mat(height, width, CV_8UC4, address, CVPixelBufferGetBytesPerRow(buffer));
-  CVPixelBufferUnlockBaseAddress(buffer, 0);
-  return mat;
+  cv::Mat result = mat.clone();
+  CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+  return result;
 }
 
 - (cv::Mat)matFromSampleBuffer:(CMSampleBufferRef)sampleBuffer {
@@ -211,9 +237,9 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
   
   // delegate image processing to the delegate
   cv::Mat image((int)height, (int)width, format_opencv, bufferAddress, bytesPerRow);
-  
+  cv::Mat result = image.clone();
   CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
-  return image;
+  return result;
 }
 
 +(NSArray*)findDocumentCornersInMat:(cv::Mat)mat  shrunkImageHeight:(CGFloat)shrunkImageHeight imageRotation:(NSInteger)imageRotation scale:(CGFloat)scale options:(NSString*)options {
@@ -715,8 +741,42 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
 
 - (void)cameraView:(NSCameraView *)cameraView willProcessRawVideoSampleBuffer:(CMSampleBufferRef)sampleBuffer onQueue:(dispatch_queue_t)queue
 {
-  cv::Mat mat = [self matFromBuffer:sampleBuffer];
-//  int videoOrientation =  (int)cameraView.videoOrientation;
+  // Drop this frame if we are still processing the previous one to prevent
+  // unbounded queuing of heavy OpenCV work on the camera thread.
+  if (dispatch_semaphore_wait(self.frameSemaphore, DISPATCH_TIME_NOW) != 0) {
+    return;
+  }
+
+  CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+  if (imageBuffer == NULL) {
+    dispatch_semaphore_signal(self.frameSemaphore);
+    return;
+  }
+
+  // Lock the pixel buffer for read-only access. We keep it locked for the
+  // entire duration of OpenCV processing so the Mat wrapper stays valid.
+  CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+
+  OSType format = CVPixelBufferGetPixelFormatType(imageBuffer);
+  cv::Mat mat;
+  if (format == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange ||
+      format == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange) {
+    // Use the luminance (Y) plane only – sufficient for document / QR detection
+    // and avoids a colour-conversion step.
+    void *address = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0);
+    int width  = (int)CVPixelBufferGetWidthOfPlane(imageBuffer, 0);
+    int height = (int)CVPixelBufferGetHeightOfPlane(imageBuffer, 0);
+    size_t bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(imageBuffer, 0);
+    mat = cv::Mat(height, width, CV_8UC1, address, bytesPerRow);
+  } else {
+    // Assume kCVPixelFormatType_32BGRA
+    void *address = CVPixelBufferGetBaseAddress(imageBuffer);
+    int width  = (int)CVPixelBufferGetWidth(imageBuffer);
+    int height = (int)CVPixelBufferGetHeight(imageBuffer);
+    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
+    mat = cv::Mat(height, width, CV_8UC4, address, bytesPerRow);
+  }
+
   UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
   int rotation = 0;
   switch (orientation) {
@@ -732,12 +792,14 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
     default:
       break;
   }
-  
-  NSMutableArray* points = [[NSMutableArray alloc] init];
+
+  CGSize imageSize = CGSizeMake(mat.cols, mat.rows);
+  NSMutableArray* points = nil;
+
   if (self.detectDocuments) {
-    NSArray* result = [OpencvDocumentProcessDelegate findDocumentCornersInMat:mat shrunkImageHeight:self.previewResizeThreshold imageRotation:0 scale:1.0 options:nil];
+    NSArray* result = [OpencvDocumentProcessDelegate findDocumentCornersInMat:mat shrunkImageHeight:self.previewResizeThreshold imageRotation:rotation scale:1.0 options:nil];
     if (result != nil) {
-      [points addObjectsFromArray:result];
+      points = [NSMutableArray arrayWithArray:result];
     }
     if (self.innerAutoScanHandler != nil) {
       [((AutoScanHandler*)self.innerAutoScanHandler) processWithPoints: points];
@@ -749,25 +811,37 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
     if (qrcodeResult.length() > 0) {
       NSString* nsResult = [NSString stringWithUTF8String:qrcodeResult.c_str()];
       NSError *error = nil;
-      id qrcodeArray = [NSJSONSerialization JSONObjectWithData:[nsResult dataUsingEncoding:NSUTF8StringEncoding] options:0 error:&error];
-      if (error) {
-        // Handle error
-      } else {
-        NSDictionary* qrcode = [((NSArray*)qrcodeArray) objectAtIndex:0];
-        [points addObjectsFromArray:[qrcode objectForKey:@"position"]];
-        if (self.onQRCode) {
-          [self.onQRCode onQRCodes:nsResult];
+      id qrcodeJSON = [NSJSONSerialization JSONObjectWithData:[nsResult dataUsingEncoding:NSUTF8StringEncoding] options:0 error:&error];
+      if (!error && [qrcodeJSON isKindOfClass:[NSArray class]] && [(NSArray*)qrcodeJSON count] > 0) {
+        NSDictionary* qrcode = [(NSArray*)qrcodeJSON firstObject];
+        NSArray* position = [qrcode objectForKey:@"position"];
+        if (position != nil) {
+          if (points == nil) points = [NSMutableArray array];
+          [points addObjectsFromArray:position];
+        }
+        if (self.onQRCode != nil) {
+          id<OnQRCode> onQRCode = self.onQRCode;
+          dispatch_async(dispatch_get_main_queue(), ^{
+            [onQRCode onQRCodes:nsResult];
+          });
         }
       }
     }
-    
   }
 #endif
-  self.cropView.videoGravity = cameraView.videoGravity;
-  self.cropView.imageSize = CGSizeMake(mat.size().width, mat.size().height);
-  self.cropView.quads = points;
-  
-  mat.release();
+
+  // Processing is done; release the pixel buffer lock before dispatching UI work.
+  CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+
+  NSString* videoGravity = cameraView.videoGravity;
+  NSArray* finalPoints = points;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self.cropView.videoGravity = videoGravity;
+    self.cropView.imageSize = imageSize;
+    self.cropView.quads = finalPoints;
+  });
+
+  dispatch_semaphore_signal(self.frameSemaphore);
 }
 - (void)cameraView:(NSCameraView *)cameraView renderToCustomContextWithImageBuffer:(CVPixelBufferRef)imageBuffer onQueue:(dispatch_queue_t)queue {
   // we do nothing here
