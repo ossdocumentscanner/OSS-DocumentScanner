@@ -1210,10 +1210,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nativescript-community/ui-cameraview@npm:0.6.3":
-  version: 0.6.3
-  resolution: "@nativescript-community/ui-cameraview@npm:0.6.3"
-  checksum: 10/147a9f3268e4da4835d2def6fd3a76160b86347fde82496efc5d0654e92ed30c25fa5bca1177d35272abf2e42f94f6e88128131675dd34f72ae7f59b50a1537c
+"@nativescript-community/ui-cameraview@npm:0.6.5":
+  version: 0.6.5
+  resolution: "@nativescript-community/ui-cameraview@npm:0.6.5"
+  checksum: 10/c8c8302bb4ab16c977b8b7a099501917ffece2b98f98fc1ef0419961835a21bda6d3e8193fe5ab0ff54e870a2a7b0cabb6b563eb82460d53018bf5d6adb0a0fd
   languageName: node
   linkType: hard
 
@@ -10404,7 +10404,7 @@ __metadata:
     "@nativescript-community/svelte-native": "npm:1.0.32"
     "@nativescript-community/systemui": "npm:1.1.24"
     "@nativescript-community/text": "npm:1.6.24"
-    "@nativescript-community/ui-cameraview": "npm:0.6.3"
+    "@nativescript-community/ui-cameraview": "npm:0.6.5"
     "@nativescript-community/ui-canvas": "npm:4.6.46"
     "@nativescript-community/ui-canvaslabel": "npm:1.2.49"
     "@nativescript-community/ui-checkbox": "npm:2.0.18"

@@ -128,10 +128,6 @@ try {
         // Trace.addCategories(ImageViewTraceCategory);
         Trace.enable();
     }
-    if (__DEV__ && __IOS__) {
-        // RocketSim.loadRocketSimConnect();
-        // DEV_LOG && console.log('loadRocketSimConnect');
-    }
 
     let launched = false;
     async function start() {

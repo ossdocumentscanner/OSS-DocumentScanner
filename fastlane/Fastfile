@@ -435,6 +435,7 @@ platform :ios do
         skip_screenshots: options[:upload_screenshots] != true,
         overwrite_screenshots: options[:upload_screenshots] != true,
         release_notes: {
+          'en-US' => params[:changelog],
           'default' => params[:changelog]
         },
         submission_information: { 
