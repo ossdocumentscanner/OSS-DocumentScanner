@@ -25,6 +25,7 @@
   self = [super init];
   if (self) {
     _frameSemaphore = dispatch_semaphore_create(1);
+    _ciContext = [CIContext contextWithOptions:nil];
   }
   return self;
 }
@@ -172,9 +173,6 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
   CGContextRelease(contextRef);
 }
 -(UIImage*) imageFromCIImage:(CIImage*)cmage {
-  if (!self.ciContext) {
-    self.ciContext = [CIContext contextWithOptions:nil];
-  }
   CGImageRef cgImage = [self.ciContext createCGImage:cmage fromRect:[cmage extent]];
   UIImage* uiImage = [UIImage imageWithCGImage:cgImage];
   CGImageRelease(cgImage);
@@ -193,7 +191,9 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
 
 - (cv::Mat) matFromImageBuffer: (CVImageBufferRef) buffer {
   cv::Mat mat ;
-  CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+  if (CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess) {
+    return mat;
+  }
   void *address = CVPixelBufferGetBaseAddress(buffer);
   int width = (int) CVPixelBufferGetWidth(buffer);
   int height = (int) CVPixelBufferGetHeight(buffer);
@@ -755,7 +755,10 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
 
   // Lock the pixel buffer for read-only access. We keep it locked for the
   // entire duration of OpenCV processing so the Mat wrapper stays valid.
-  CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+  if (CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess) {
+    dispatch_semaphore_signal(self.frameSemaphore);
+    return;
+  }
 
   OSType format = CVPixelBufferGetPixelFormatType(imageBuffer);
   cv::Mat mat;
@@ -764,6 +767,11 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
     // Use the luminance (Y) plane only – sufficient for document / QR detection
     // and avoids a colour-conversion step.
     void *address = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0);
+    if (address == NULL) {
+      CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+      dispatch_semaphore_signal(self.frameSemaphore);
+      return;
+    }
     int width  = (int)CVPixelBufferGetWidthOfPlane(imageBuffer, 0);
     int height = (int)CVPixelBufferGetHeightOfPlane(imageBuffer, 0);
     size_t bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(imageBuffer, 0);
@@ -771,6 +779,11 @@ uint32_t bitmapInfo = kCGImageAlphaPremultipliedLast;
   } else {
     // Assume kCVPixelFormatType_32BGRA
     void *address = CVPixelBufferGetBaseAddress(imageBuffer);
+    if (address == NULL) {
+      CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+      dispatch_semaphore_signal(self.frameSemaphore);
+      return;
+    }
     int width  = (int)CVPixelBufferGetWidth(imageBuffer);
     int height = (int)CVPixelBufferGetHeight(imageBuffer);
     size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
