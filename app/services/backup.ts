@@ -123,7 +123,10 @@ export class BackupService {
             if (pages && pages.length > 0) {
                 pages.forEach((page) => {
                     const pageDataFolder = targetDocFolder.getFolder(page.id);
-                    page.sourceImagePath = path.join(pageDataFolder.path, basename(page.sourceImagePath));
+                    // the original image can be missing: it is not kept for every page
+                    if (page.sourceImagePath) {
+                        page.sourceImagePath = path.join(pageDataFolder.path, basename(page.sourceImagePath));
+                    }
                     page.imagePath = path.join(pageDataFolder.path, basename(page.imagePath));
                 });
                 await doc.addPages(pages, true, true);
