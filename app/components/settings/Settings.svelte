@@ -14,6 +14,7 @@
     import { showError } from '@shared/utils/showError';
     import { navigate } from '@shared/utils/svelte/ui';
     import dayjs from 'dayjs';
+    import { filesize } from 'filesize';
     import { getLocaleDisplayName, l, lc, lu, selectLanguage, slc } from '~/helpers/locale';
     import { getColorThemeDisplayName, getThemeDisplayName, selectColorTheme, selectTheme } from '~/helpers/theme';
     import { backupWorkerService } from '~/services/backupWorker';
@@ -44,6 +45,7 @@
         FILENAME_USE_DOCUMENT_NAME,
         IMG_COMPRESS,
         IMG_FORMAT,
+        KEEP_ORIGINAL_IMAGES,
         MAGNIFIER_SENSITIVITY,
         PDFImportImages,
         PDF_IMPORT_IMAGES,
@@ -61,6 +63,7 @@
         SETTINGS_IMAGE_EXPORT_FORMAT,
         SETTINGS_IMAGE_EXPORT_QUALITY,
         SETTINGS_IMPORT_PDF_IMAGES,
+        SETTINGS_KEEP_ORIGINAL_IMAGES,
         SETTINGS_MAGNIFIER_SENSITIVITY,
         SETTINGS_NB_COLUMNS,
         SETTINGS_NB_COLUMNS_LANDSCAPE,
@@ -78,6 +81,7 @@
         USE_SYSTEM_CAMERA
     } from '~/utils/constants';
     import { copyFolderContent, removeFolderContent } from '~/utils/file';
+    import { StorageSizes } from '~/utils/originals';
     import { PDF_OPTIONS } from '~/utils/localized_constant';
     import { restoreSettings } from '~/utils/settings.android';
     import { createView, getNameFormatHTMLArgs, hideLoading, openLink, showLoading, showSnack } from '~/utils/ui';
@@ -123,6 +127,17 @@
 
     let refresh: (force?: boolean, filter?: string) => void;
     $: searchEnabled = searchable ?? (!subSettingsOptions && !options);
+
+    let documentsStorageSizes: StorageSizes = null;
+    async function updateDocumentsStorageSizes() {
+        try {
+            documentsStorageSizes = await documentsService.getStorageSizes();
+            refresh?.();
+        } catch (error) {
+            showError(error);
+        }
+    }
+    updateDocumentsStorageSizes();
 
     function getSubSettings(id: string) {
         switch (id) {
@@ -315,6 +330,13 @@
                         description: lc('image_quality_desc'),
                         type: 'slider',
                         rightValue: () => ApplicationSettings.getNumber(SETTINGS_IMAGE_EXPORT_QUALITY, IMG_COMPRESS)
+                    },
+                    {
+                        type: 'switch',
+                        id: SETTINGS_KEEP_ORIGINAL_IMAGES,
+                        title: lc('keep_original_images'),
+                        description: lc('keep_original_images_desc'),
+                        value: ApplicationSettings.getBoolean(SETTINGS_KEEP_ORIGINAL_IMAGES, KEEP_ORIGINAL_IMAGES)
                     }
                 ];
             case 'pdf_import': {
@@ -598,61 +620,70 @@
                         type: 'prompt'
                     }
                 ];
-            case 'data':
-                return dataSettingsAvailable
-                    ? [
-                          {
-                              id: 'setting',
-                              key: 'storage_location',
-                              title: lc('storage_location'),
-                              currentValue: () => (documentsService.rootDataFolder === knownFolders.externalDocuments().path ? 'sdcard' : 'internal'),
-                              description: () => (documentsService.rootDataFolder === knownFolders.externalDocuments().path ? lc('sdcard') : lc('internal_storage')),
-                              values: [
-                                  { value: 'internal', title: lc('internal_storage') },
-                                  { value: 'sdcard', title: lc('sdcard') }
-                              ],
-                              onResult: async (data) => {
-                                  try {
-                                      const current = documentsService.rootDataFolder === knownFolders.externalDocuments().path ? 'sdcard' : 'internal';
-                                      if (current !== data) {
-                                          const confirmed = await confirm({
-                                              title: lc('move_data'),
-                                              message: lc('move_data_desc'),
-                                              okButtonText: lc('ok'),
-                                              cancelButtonText: lc('cancel')
-                                          });
-                                          if (confirmed) {
-                                              const srcFolder = documentsService.rootDataFolder;
-                                              let dstFolder: string;
-                                              if (data === 'sdcard') {
-                                                  dstFolder = knownFolders.externalDocuments().path;
-                                              } else {
-                                                  dstFolder = knownFolders.documents().path;
-                                              }
-                                              showLoading(lc('moving_files'));
-                                              const srcDbPath = path.join(srcFolder, DocumentsService.DB_NAME);
-                                              await File.fromPath(srcDbPath).copy(path.join(dstFolder, DocumentsService.DB_NAME));
-                                              await copyFolderContent(path.join(srcFolder, 'data'), path.join(dstFolder, 'data'));
-                                              ApplicationSettings.setString(SETTINGS_ROOT_DATA_FOLDER, dstFolder);
-                                              await File.fromPath(srcDbPath).remove();
-                                              await removeFolderContent(path.join(srcFolder, 'data'));
-                                              await alert({
-                                                  cancelable: false,
-                                                  message: lc('restart_app'),
-                                                  okButtonText: lc('restart')
+            case 'storage':
+                return [
+                    {
+                        id: 'storage_usage',
+                        title: lc('documents_storage'),
+                        description: lc('documents_storage_desc'),
+                        rightValue: () => (documentsStorageSizes ? filesize(documentsStorageSizes.total, { output: 'string' }) : null)
+                    }
+                ].concat(
+                    dataSettingsAvailable
+                        ? ([
+                              {
+                                  id: 'setting',
+                                  key: 'storage_location',
+                                  title: lc('storage_location'),
+                                  currentValue: () => (documentsService.rootDataFolder === knownFolders.externalDocuments().path ? 'sdcard' : 'internal'),
+                                  description: () => (documentsService.rootDataFolder === knownFolders.externalDocuments().path ? lc('sdcard') : lc('internal_storage')),
+                                  values: [
+                                      { value: 'internal', title: lc('internal_storage') },
+                                      { value: 'sdcard', title: lc('sdcard') }
+                                  ],
+                                  onResult: async (data) => {
+                                      try {
+                                          const current = documentsService.rootDataFolder === knownFolders.externalDocuments().path ? 'sdcard' : 'internal';
+                                          if (current !== data) {
+                                              const confirmed = await confirm({
+                                                  title: lc('move_data'),
+                                                  message: lc('move_data_desc'),
+                                                  okButtonText: lc('ok'),
+                                                  cancelButtonText: lc('cancel')
                                               });
-                                              restartApp();
+                                              if (confirmed) {
+                                                  const srcFolder = documentsService.rootDataFolder;
+                                                  let dstFolder: string;
+                                                  if (data === 'sdcard') {
+                                                      dstFolder = knownFolders.externalDocuments().path;
+                                                  } else {
+                                                      dstFolder = knownFolders.documents().path;
+                                                  }
+                                                  showLoading(lc('moving_files'));
+                                                  const srcDbPath = path.join(srcFolder, DocumentsService.DB_NAME);
+                                                  await File.fromPath(srcDbPath).copy(path.join(dstFolder, DocumentsService.DB_NAME));
+                                                  await copyFolderContent(path.join(srcFolder, 'data'), path.join(dstFolder, 'data'));
+                                                  ApplicationSettings.setString(SETTINGS_ROOT_DATA_FOLDER, dstFolder);
+                                                  await File.fromPath(srcDbPath).remove();
+                                                  await removeFolderContent(path.join(srcFolder, 'data'));
+                                                  await alert({
+                                                      cancelable: false,
+                                                      message: lc('restart_app'),
+                                                      okButtonText: lc('restart')
+                                                  });
+                                                  restartApp();
+                                              }
                                           }
+                                      } catch (error) {
+                                          showError(error);
+                                      } finally {
+                                          hideLoading();
                                       }
-                                  } catch (error) {
-                                      showError(error);
-                                  } finally {
-                                      hideLoading();
                                   }
                               }
-                          }
-                      ]
-                    : ([] as any);
+                          ] as any)
+                        : []
+                );
             case 'appearance':
                 return [
                     {
@@ -805,19 +836,15 @@
                           ]
                         : []
                 )
-                .concat(
-                    dataSettingsAvailable
-                        ? [
-                              {
-                                  id: 'sub_settings',
-                                  icon: 'mdi-database-outline',
-                                  title: lc('data'),
-                                  description: lc('data_settings'),
-                                  options: () => getSubSettings('data')
-                              }
-                          ]
-                        : []
-                )
+                .concat([
+                    {
+                        id: 'sub_settings',
+                        icon: 'mdi-database-outline',
+                        title: lc('storage'),
+                        description: lc('storage_settings_desc'),
+                        options: () => getSubSettings('storage')
+                    }
+                ])
 
                 .concat(
                     $hasCamera
@@ -1269,6 +1296,11 @@
                 //     break;
                 // }
 
+                case 'storage_usage': {
+                    const storageView = (await import('~/components/settings/StorageView.svelte')).default;
+                    navigate({ page: storageView });
+                    break;
+                }
                 case 'data_sync':
                 case 'image_sync':
                 case 'pdf_sync':

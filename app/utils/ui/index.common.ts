@@ -3,6 +3,8 @@ import { share } from '@akylas/nativescript-app-utils/share';
 import { MultiResult, Permissions, Status, isPermResultAuthorized, openSettings, request } from '@nativescript-community/perms';
 import { ComponentInstanceInfo, resolveComponentElement } from '@nativescript-community/svelte-native/dom';
 import { openFilePicker, pickFolder } from '@nativescript-community/ui-document-picker';
+import { GestureRootView } from '@nativescript-community/gesturehandler';
+import { CheckBox } from '@nativescript-community/ui-checkbox';
 import { Label } from '@nativescript-community/ui-label';
 import { showBottomSheet } from '@nativescript-community/ui-material-bottomsheet/svelte';
 import { MDCAlertControlerOptions, alert, confirm, prompt } from '@nativescript-community/ui-material-dialogs';
@@ -34,6 +36,7 @@ import { showError } from '@shared/utils/showError';
 import { goBack, navigate, showModal } from '@shared/utils/svelte/ui';
 import { hideLoading, showLoading, showSliderPopover, showSnack, updateLoadingProgress } from '@shared/utils/ui';
 import dayjs from 'dayjs';
+import { filesize } from 'filesize';
 import {
     CropResult,
     Quads,
@@ -54,7 +57,7 @@ import type OptionSelect__SvelteComponent_ from '@shared/components/OptionSelect
 import type BottomSnack__SvelteComponent_ from '~/components/widgets/BottomSnack.svelte';
 import BottomSnack from '~/components/widgets/BottomSnack.svelte';
 import { getFileNameForDocument, getFormatedDateForFilename, getLocaleDisplayName, l, lang, lc, lcp, pluralKey } from '~/helpers/locale';
-import { DocFolder, ImportImageData, OCRDocument, OCRPage, PageData } from '~/models/OCRDocument';
+import { DocFolder, ImportImageData, OCRDocument, OCRPage, PageData, getDocumentsService } from '~/models/OCRDocument';
 import { PKPassType } from '~/models/PKPass';
 import { OCRLanguages, ocrService } from '~/services/ocr';
 import { getPDFDefaultExportOptions } from '~/services/pdf/PDFCanvas';
@@ -74,6 +77,8 @@ import {
     DEFAULT_EXPORT_DIRECTORY,
     DEFAULT_OCR_COPY_USE_SPACE,
     DEFAULT_TRANSFORM,
+    DEFAULT_TRASH_ENABLED,
+    DEFAULT_TRASH_REMEMBERED_DELETE_MODE,
     DOCUMENT_NOT_DETECTED_MARGIN,
     ESPASS_EXT,
     PDFImportImages,
@@ -93,12 +98,15 @@ import {
     SETTINGS_IMPORT_PDF_IMAGES,
     SETTINGS_OCR_COPY_USE_SPACE,
     SETTINGS_TRANSFORM_BATCH_SIZE,
+    SETTINGS_TRASH_ENABLED,
+    SETTINGS_TRASH_REMEMBERED_DELETE_MODE,
     TRANSFORMS_SPLIT,
     TRANSFORM_BATCH_SIZE,
     USE_SYSTEM_CAMERA,
     getImageExportSettings
 } from '~/utils/constants';
 import { recycleImages } from '~/utils/images';
+import { StorageSizes, filterPagesWithOriginal } from '~/utils/originals';
 import { buildPassArchive, getStoredPassFormat } from '~/utils/pkpass';
 import { importPKPassFiles } from '~/utils/pkpass-import';
 import { showToast } from '~/utils/ui';
@@ -1403,6 +1411,115 @@ interface PageTransformData {
     pageIndex: number;
     document: OCRDocument;
 }
+/**
+ * Deletes documents, asking the user first. When the trash is enabled the user chooses
+ * between moving to the trash and deleting for good, and can remember that choice.
+ * Returns true when something was actually deleted.
+ */
+export async function deleteDocumentsWithConfirm(documents: OCRDocument[]) {
+    if (!documents.length) {
+        return false;
+    }
+    const trashEnabled = ApplicationSettings.getBoolean(SETTINGS_TRASH_ENABLED, DEFAULT_TRASH_ENABLED);
+    if (!trashEnabled) {
+        const confirmed = await confirm({
+            cancelButtonText: lc('cancel'),
+            message: lcp('confirm_delete_documents', documents.length),
+            okButtonText: lc('delete'),
+            title: lc('delete')
+        });
+        if (confirmed) {
+            await getDocumentsService().deleteDocuments(documents);
+            return true;
+        }
+        return false;
+    }
+    const rememberedMode = ApplicationSettings.getString(SETTINGS_TRASH_REMEMBERED_DELETE_MODE, DEFAULT_TRASH_REMEMBERED_DELETE_MODE);
+    let result: boolean = null;
+    if (rememberedMode) {
+        result = rememberedMode === 'trash';
+    } else {
+        const view = createView(GestureRootView, {
+            columns: 'auto,*',
+            rows: 'auto'
+        });
+        const checkBox = createView(CheckBox, {});
+        const label = createView(Label, {
+            verticalAlignment: 'center',
+            col: 1,
+            text: lc('remember_delete_choice')
+        });
+        label.on('tap', () => {
+            checkBox.checked = !checkBox.checked;
+        });
+        view.addChild(checkBox);
+        view.addChild(label);
+        result = await confirm({
+            neutralButtonText: lc('cancel'),
+            message: lcp('confirm_move_to_trash', documents.length),
+            cancelButtonText: lc('delete_permanently'),
+            okButtonText: lc('move_to_trash'),
+            title: lc('delete'),
+            view
+        } as any);
+        if (result !== null && checkBox.checked) {
+            ApplicationSettings.setString(SETTINGS_TRASH_REMEMBERED_DELETE_MODE, result === true ? 'trash' : 'permament');
+        }
+    }
+    if (result === true) {
+        await getDocumentsService().trashDocuments(documents);
+        return true;
+    }
+    if (result === false) {
+        // neutral button tapped: delete permanently
+        const confirmed = await confirm({
+            cancelButtonText: lc('cancel'),
+            message: lcp('confirm_delete_permanently', documents.length),
+            okButtonText: lc('delete_permanently'),
+            title: lc('delete_permanently')
+        });
+        if (confirmed) {
+            await getDocumentsService().deleteDocuments(documents);
+            return true;
+        }
+    }
+    return false;
+}
+/** Human readable disk usage: the processed images size (what an export weighs), then the total with the originals. */
+export function formatStorageSizes(sizes: StorageSizes) {
+    const size = filesize(sizes.size, { output: 'string' });
+    return sizes.sourceSize ? lc('size_with_total', size, filesize(sizes.total, { output: 'string' })) : size;
+}
+function getPagesFromDocuments(documents: OCRDocument[]) {
+    const pages: PageTransformData[] = [];
+    documents.forEach((document) => {
+        pages.push(...document.pages.reduce((acc, page, pageIndex) => acc.concat([{ page, pageIndex, document }]), []));
+    });
+    return pages;
+}
+export async function deleteOriginalImages({ documents, pages }: { documents?: OCRDocument[]; pages?: PageTransformData[] }) {
+    if (!pages && documents) {
+        pages = getPagesFromDocuments(documents);
+    }
+    const pagesWithOriginal = filterPagesWithOriginal(pages);
+    if (!pagesWithOriginal.length) {
+        showSnack({ message: lc('no_original_image_to_delete') });
+        return;
+    }
+    const confirmed = await confirm({
+        title: lc('delete_original_images'),
+        message: lcp('confirm_delete_original_images', pagesWithOriginal.length),
+        okButtonText: lc('delete'),
+        cancelButtonText: lc('cancel')
+    });
+    if (!confirmed) {
+        return;
+    }
+    const freedSizes = await doInBatch<PageTransformData, number>(pagesWithOriginal, (pageData) => pageData.document.deletePageOriginal(pageData.pageIndex));
+    const freedSize = freedSizes.reduce((acc, size) => acc + size, 0);
+    showSnack({ message: lc('original_images_deleted', filesize(freedSize, { output: 'string' })) });
+    return true;
+}
 export async function transformPages({ documents, pages }: { documents?: OCRDocument[]; pages?: PageTransformData[] }) {
     try {
         const view = (await import('~/components/common/TransformPagesBottomSheet.svelte')).default;
@@ -1416,10 +1533,7 @@ export async function transformPages({ documents, pages }: { documents?: OCRDocu
             // we want to ocr the full document.
             const progress = 0;
             if (!pages && documents) {
-                pages = [];
-                documents.forEach((document) => {
-                    pages.push(...document.pages.reduce((acc, page, pageIndex) => acc.concat([{ page, pageIndex, document }]), []));
-                });
+                pages = getPagesFromDocuments(documents);
             }
             const totalPages = pages.length;
             let pagesDone = 0;

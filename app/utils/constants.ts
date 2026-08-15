@@ -23,6 +23,7 @@ export const SETTINGS_REMOTE_AUTO_SYNC = 'webdav_auto_sync'; // we cant rename a
 export const SETTINGS_SYNC_SERVICES = 'sync_services'; // we cant rename as it was already used before
 export const SETTINGS_IMAGE_EXPORT_FORMAT = 'image_export_format';
 export const SETTINGS_IMAGE_EXPORT_QUALITY = 'image_export_quality';
+export const SETTINGS_KEEP_ORIGINAL_IMAGES = 'keep_original_images';
 export const SETTINGS_TRANSFORM_BATCH_SIZE = 'transform_batch_size';
 export const SETTINGS_DEFAULT_TRANSFORM = 'defaultTransforms';
 export const SETTINGS_DEFAULT_COLORTYPE = 'defaultColorType';
@@ -77,6 +78,7 @@ export const PDF_IMPORT_IMAGES = PDFImportImages.ask;
 export const USE_SYSTEM_CAMERA = false;
 export const CROP_ENABLED = true;
 export const ALWAYS_PROMPT_CROP_EDIT = false;
+export const KEEP_ORIGINAL_IMAGES = true;
 export const MAGNIFIER_SENSITIVITY = 0.8;
 export const TRANSFORM_BATCH_SIZE = 3;
 export const AUTO_SCAN_ENABLED = true;
@@ -131,6 +133,11 @@ export const DEFAULT_EXPORT_DIRECTORY = __ANDROID__
         ? android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS).getAbsolutePath()
         : undefined
     : undefined;
+
+/** Whether a copy of the image a page was created from is kept, allowing later re-crop/transforms. */
+export function keepOriginalImages() {
+    return ApplicationSettings.getBoolean(SETTINGS_KEEP_ORIGINAL_IMAGES, KEEP_ORIGINAL_IMAGES);
+}
 
 export function getImageExportSettings() {
     return {

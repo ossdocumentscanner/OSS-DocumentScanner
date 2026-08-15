@@ -30,7 +30,8 @@ import {
     OCR_ITERATOR_LEVEL,
     SEPARATOR,
     SETTINGS_DOCUMENT_NAME_FORMAT,
-    getImageExportSettings
+    getImageExportSettings,
+    keepOriginalImages
 } from '../utils/constants';
 import { getImagePipeline } from '@nativescript-community/ui-image';
 import { PKPass } from './PKPass';
@@ -150,6 +151,12 @@ export interface DocumentExtra {
           };
 }
 
+/** Size of a file on disk, 0 when the path is empty or the file is gone. */
+function getFileSize(filePath?: string) {
+    // File.fromPath creates the file if it does not exist so we check first
+    return filePath && File.exists(filePath) ? File.fromPath(filePath).size : 0;
+}
+
 export class OCRDocument extends Observable implements Document {
     // id: string;
     createdDate: number;
@@ -237,12 +244,18 @@ export class OCRDocument extends Observable implements Document {
                 baseName += '.' + IMG_FORMAT;
             }
             const actualSourceImagePath = path.join(pageFileData.path, baseName);
-            attributes.sourceImagePath = actualSourceImagePath;
             if (actualSourceImagePath !== sourceImagePath) {
-                const file = File.fromPath(sourceImagePath);
-                await file.copy(actualSourceImagePath);
+                // the original lives outside the page folder: this is a new capture/import
+                if (keepOriginalImages()) {
+                    attributes.sourceImagePath = actualSourceImagePath;
+                    const file = File.fromPath(sourceImagePath);
+                    await file.copy(actualSourceImagePath);
+                }
+            } else {
+                attributes.sourceImagePath = actualSourceImagePath;
             }
         }
+        attributes.sourceSize = getFileSize(attributes.sourceImagePath);
         // we add 1000 to each pageIndex so that we can reorder them
         // if (!attributes.pageIndex) {
         //     attributes.pageIndex = index + 1000;
@@ -325,12 +338,18 @@ export class OCRDocument extends Observable implements Document {
                     }
                     const actualSourceImagePath = path.join(pageFileData.path, baseName);
                     // if the same nothing to do, must be while syncing
-                    attributes.sourceImagePath = actualSourceImagePath;
                     if (actualSourceImagePath !== sourceImagePath) {
-                        const file = File.fromPath(sourceImagePath);
-                        await file.copy(actualSourceImagePath);
+                        // the original lives outside the page folder: this is a new capture/import
+                        if (keepOriginalImages()) {
+                            attributes.sourceImagePath = actualSourceImagePath;
+                            const file = File.fromPath(sourceImagePath);
+                            await file.copy(actualSourceImagePath);
+                        }
+                    } else {
+                        attributes.sourceImagePath = actualSourceImagePath;
                     }
                 }
+                attributes.sourceSize = getFileSize(attributes.sourceImagePath);
                 if (id) {
                     try {
                         const page = await documentsService.pageRepository.get(id);
@@ -377,6 +396,25 @@ export class OCRDocument extends Observable implements Document {
     async removeFromDisk() {
         const docData = this.folderPath;
         return docData.remove();
+    }
+
+    /**
+     * Deletes the original (pre-crop) image of a page to free storage.
+     * The page keeps its processed image but can't be re-cropped/transformed anymore.
+     * Returns the number of freed bytes.
+     */
+    async deletePageOriginal(pageIndex: number) {
+        const page = this.pages[pageIndex];
+        if (!page?.sourceImagePath) {
+            return 0;
+        }
+        const freedSize = getFileSize(page.sourceImagePath);
+        if (File.exists(page.sourceImagePath)) {
+            await File.fromPath(page.sourceImagePath).remove();
+        }
+        DEV_LOG && console.log('deletePageOriginal', this.id, pageIndex, page.sourceImagePath, freedSize);
+        await this.updatePage(pageIndex, { sourceImagePath: null, sourceSize: 0 }, false);
+        return freedSize;
     }
 
     async deletePage(pageIndex: number) {
@@ -540,6 +578,10 @@ export class OCRDocument extends Observable implements Document {
 
     async updatePageCrop(pageIndex: number, quad: Quad) {
         const page = this.pages[pageIndex];
+        // the crop is recomputed from the original image which can have been deleted
+        if (!page?.sourceImagePath) {
+            return;
+        }
         // DEV_LOG && console.log('updatePageCrop', this.id, pageIndex, quad, page.imagePath);
         const file = File.fromPath(page.imagePath);
         const imageExportSettings = getImageExportSettings();
@@ -584,7 +626,8 @@ export class OCRDocument extends Observable implements Document {
         const file = File.fromPath(page.imagePath);
         DEV_LOG && console.log('updatePageTransforms', this.id, pageIndex, this.pages.length, page?.imagePath, transforms, file.path, file.parent.path);
         const imageExportSettings = getImageExportSettings();
-        if (transforms === page.transforms) {
+        // without the original image the transforms can't be recomputed: only the other updates are applied
+        if (transforms === page.transforms || !page.sourceImagePath) {
             await this.updatePage(
                 pageIndex,
                 {
@@ -684,6 +727,8 @@ export interface Page {
     width: number;
     height: number;
     size: number;
+    /** size of the original image file, 0 when it is not kept */
+    sourceSize: number;
     sourceImagePath: string;
     sourceImageWidth: number;
     sourceImageHeight: number;
@@ -729,6 +774,7 @@ export class OCRPage extends Observable implements Page {
     width: number;
     height: number;
     size: number;
+    sourceSize: number;
 
     sourceImagePath: string;
     sourceImageWidth: number;

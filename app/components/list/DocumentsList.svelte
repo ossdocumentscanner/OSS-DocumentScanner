@@ -7,12 +7,12 @@
     import { openFile, openUrl, throttle } from '@nativescript/core/utils';
     import { showError } from '@shared/utils/showError';
     import dayjs from 'dayjs';
-    import { filesize } from 'filesize';
     import { Template } from '@nativescript-community/svelte-native/components';
     import { NativeViewElementNode } from '@nativescript-community/svelte-native/dom';
     import { isEInk } from '~/helpers/theme';
     import { DocFolder } from '~/models/OCRDocument';
-    import { importImageFromCamera } from '~/utils/ui';
+    import { formatStorageSizes, importImageFromCamera } from '~/utils/ui';
+    import { computeStorageSizes } from '~/utils/originals';
     import { colors, fontScale, hasCamera, windowInset } from '~/variables';
     import PageIndicator from '../common/PageIndicator.svelte';
     import RotableImageView from '../common/RotableImageView.svelte';
@@ -65,15 +65,7 @@
         textPaint.color = colorOnSurfaceVariant;
         const { doc } = item;
         textPaint.textSize = condensed ? 11 : 14 * $fontScale;
-        canvas.drawText(
-            filesize(
-                doc.pages.reduce((acc, v) => acc + v.size, 0),
-                { output: 'string' }
-            ),
-            dx,
-            h - (condensed ? 0 : 16) - 10,
-            textPaint
-        );
+        canvas.drawText(formatStorageSizes(computeStorageSizes(doc.pages)), dx, h - (condensed ? 0 : 16) - 10, textPaint);
         textPaint.color = colorOnBackground;
         const topText = createNativeAttributedString({
             spans: [

@@ -771,7 +771,7 @@
         </stacklayout>
 
         <stacklayout borderTopColor={colorOutline} borderTopWidth={1} orientation="horizontal" row={4}>
-            <mdbutton class="icon-btn" text="mdi-crop" variant="text" on:tap={() => cropEdit()} />
+            <mdbutton class="icon-btn" text="mdi-crop" variant="text" visibility={currentItem?.sourceImagePath ? 'visible' : 'collapse'} on:tap={() => cropEdit()} />
             <mdbutton class="icon-btn" text="mdi-rotate-left" variant="text" on:tap={() => rotateImageLeft()} />
             <mdbutton class="icon-btn" text="mdi-rotate-right" variant="text" on:tap={() => rotateImageRight()} />
             <mdbutton class="icon-btn" text="mdi-auto-fix" variant="text" on:tap={showEnhancements} />
