@@ -1,41 +1,57 @@
-The OSS Document Scanner is a free and Open Source app to transform your mobile device into a powerful document scanner.
+<p>The OSS Document Scanner is a free and Open Source app to transform your mobile device into a powerful document scanner.</p>
 
-SCAN
-* Scan your documents or receipts with a fast camera scan.
-* Enjoy the automatic edge detection feature allowing you to quickly scan many documents
-* Bulk scan documents or book pages
-* Import documents from images or even existing PDF
-* You can scan to PDF any kind of document: Receipts, IDs, notes, recipes, photos, business cards, whiteboards, books. You can then use and work with the generated PDFs on all your devices, phones, computers, tablets...
+<p><b>SCAN</b></p>
+<ul>
+  <li>Scan your documents or receipts with a fast camera scan.</li>
+  <li>Enjoy the automatic edge detection feature allowing you to quickly scan many documents.</li>
+  <li>Bulk scan documents or book pages.</li>
+  <li>Import documents from images or even existing PDF.</li>
+  <li>You can scan to PDF any kind of document: Receipts, IDs, notes, recipes, photos, business cards, whiteboards, books. You can then use and work with the generated PDFs on all your devices, phones, computers, tablets...</li>
+</ul>
 
-ENHANCE
-* Improve PDFs quality by applying enhancing filters for color or black & white documents.
-* Edit crop
-* Reorder pages, merge documents
-* Rotate pages
-* Change brightness and contrast to create beautiful documents
+<p><b>ENHANCE</b></p>
+<ul>
+  <li>Improve PDFs quality by applying enhancing filters for color or black & white documents.</li>
+  <li>Edit crop.</li>
+  <li>Reorder pages, merge documents.</li>
+  <li>Rotate pages.</li>
+  <li>Change brightness and contrast to create beautiful documents.</li>
+</ul>
 
-ORGANIZE
-* Create folders with colors for easy access
-* Sort documents
-* Name documents
+<p><b>ORGANIZE</b></p>
+<ul>
+  <li>Create folders with colors for easy access.</li>
+  <li>Sort documents.</li>
+  <li>Name documents.</li>
+</ul>
 
-EXPORT
-* create PDF directly from your mobile device by converting photos, images, other documents, into beautiful and configurable PDFs.
-* export and share your documents to PDF or JPEG or PNG with your friends, family, colleagues
+<p><b>EXPORT</b></p>
+<ul>
+  <li>Create PDF directly from your mobile device by converting photos, images, other documents, into beautiful and configurable PDFs.</li>
+  <li>Export and share your documents to PDF or JPEG or PNG with your friends, family, colleagues.</li>
+</ul>
 
-SEARCH
-* OCR your documents using offline (to be downloaded first) and open source models in many languages.
-* Generate searchable PDFs by converting images to text using the powerful OCR models from the Tesseract project.
+<p><b>SEARCH</b></p>
+<ul>
+  <li>OCR your documents using offline (to be downloaded first) and open source models in many languages.</li>
+  <li>Generate searchable PDFs by converting images to text using the powerful OCR models from the Tesseract project.</li>
+</ul>
 
-SECURITY
-* Improve the security of your generated PDF by adding a password.
+<p><b>SECURITY</b></p>
+<ul>
+  <li>Improve the security of your generated PDF by adding a password.</li>
+</ul>
 
-SYNC
-* Synchronize your documents, PDFs, Images with your computers, other devices or local folder sync.
-* Sync using WebDAV, Google Drive, OneDrive
+<p><b>SYNC</b></p>
+<ul>
+  <li>Synchronize your documents, PDFs, Images with your computers, other devices or local folder sync.</li>
+  <li>Sync using WebDAV, Google Drive, OneDrive.</li>
+</ul>
 
-PRIVACY
-* Use a free and Open Source document scanner to protect your privacy
+<p><b>PRIVACY</b></p>
+<ul>
+  <li>Use a free and Open Source document scanner to protect your privacy.</li>
+</ul>
 
-COMMUNITY
-* Provide feedback or even help translate the app. You are part of this project and you make help it grow so that everyone can enjoy the best free and open source document scanner
+<p><b>COMMUNITY</b></p>
+<p>Provide feedback or even help translate the app. You are part of this project and you make help it grow so that everyone can enjoy the best free and open source document scanner.</p>
