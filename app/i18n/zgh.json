@@ -1,0 +1,61 @@
+{
+    "$com.akylas.cardwallet": {
+        "ios": {
+            "info": {
+                "plist": {
+                    "NSCameraUsageDescription": "ⵙⵔⴳ ⵜⴰⴽⴰⵎⵉⵕⴰⵜ ⴰⴷ ⵜⵙⵙⵉⴽⴽ ⵅⴼ ⵜⴽⴰⵕⴹⵉⵡⵉⵏ ⵙ ⵜⴽⴰⵎⵉⵕⴰⵜ",
+                    "NSPhotoLibraryUsageDescription": "ⵙⵔⴳ ⵜⵉⵡⵍⴰⴼⵉⵏ ⵜⴰⴼⴰ ⴰⴷ ⵢⵉⵍⵉ ⵓⵙⵉⴽⴽⵉ ⵅⴼ ⵜⴽⴰⵕⴹⵉⵡⵉⵏ ⵏ ⵓⵙⵉⵔⴰ ⵏⵏⴽ"
+                }
+            }
+        }
+    },
+    "$com.akylas.documentscanner": {
+        "app": {
+            "name": "OSS Document Scanner"
+        }
+    },
+    "a3": "a3",
+    "a4": "a4",
+    "about": "ⵅⴼ",
+    "add": "ⵔⵏⵓ",
+    "add_extra_field": "ⵔⵏⵓ ⵉⴳ ⵢⴰⴹⵏ",
+    "add_from_camera": "ⵔⵏⵓ ⵙⴳ ⵜⴽⴰⵎⵉⵕⴰⵜ",
+    "add_manual_card": "ⵔⵏⵓ ⵜⴰⴽⴰⵕⴹⴰ ⵙ ⵓⴼⵓⵙ",
+    "add_qrcode_camera": "ⵔⵏⵓ ⴰⴽⵓⴷⴱⴰⵔ ⵙⴳ ⵜⴽⴰⵎⵉⵕⴰⵜ",
+    "add_qrcode_file": "ⵔⵏⵓ ⴰⴽⵓⴷⴱⴰⵔ ⵙⴳ ⵜⵡⵍⴰⴼⵜ",
+    "add_qrcode_manual": "ⵔⵏⵓ ⴰⴽⵓⴷⴱⴰⵔ ⵙ ⵓⴼⵓⵙ",
+    "additional_information": "ⵓⵎⵍⴰⵏ ⵢⴰⴹⵏ",
+    "allow_app_screenshot": "ⵙⵔⴳ ⴰⵙⵓⵍⴼ ⵏ ⵓⵎⵉⵥⴰⵕ",
+    "always": "ⴰⴱⴷⴰ",
+    "always_prompt_crop_edit": "ⵙⵔⴳ ⴰⴱⴷⴰ ⴰⵙⵎⵔⵙ ⵏ ⵜⵙⴳⴰ ⵏ ⵓⵙⵏⵎ ⵏ ⵜⵏⵜⴰⵎⵜ",
+    "api_token": "ⵉⵏⵉⴳⵍ ⵏ API",
+    "authentication": "ⴰⵙⵖⵣⵏ",
+    "auto": "ⵓⵟⵓⵎⴰⵜⵉⴽ",
+    "backup_failed": "ⵜⴰⴳⴰⵡⵉⵜ ⴳ ⵓⵃⵟⵟⵓ",
+    "backup_restore": "ⴰⵃⵟⵟⵓ / ⵜⴰⴽⵏⵏⴰⵡⵜ",
+    "barcode": "ⴰⴽⵓⴷⴱⴰⵔ",
+    "barcode_type": "ⴰⵏⴰⵡ ⵏ ⵓⴽⵓⴷⴱⴰⵔ",
+    "barcore_qrcode": "ⴰⴽⵓⴷⴱⴰⵔ / ⵉⵏⵉⴳⵍ ⵏ QR",
+    "biometric_lock": "ⵜⴰⵏⴼⵔⵓⵜ ⵜⴰⴱⵢⵓⵎⵉⵜⵔⵉⵜ",
+    "black_white": "ⴰⴱⵔⴽⴰⵏ ⴷ ⵓⵎⵍⵍⴰⵍ",
+    "blue": "ⴰⵏⵉⵍⵉ",
+    "brightness": "ⵜⴰⵙⵙⵉⵖⵜ",
+    "bulk_export": "ⴰⵙⵉⴼⴹ ⴰⵎⴳⵔⵓ",
+    "camera": "ⵜⴰⴽⴰⵎⵉⵕⴰⵜ",
+    "camera_preview_stretch": "ⴰⵏⵏⴰⵢ ⵏ ⵓⵎⵎⵖⵥⵉⵥ",
+    "color_theme": {
+        "dynamic": "ⵉⴽⵯⵍⴰⵏ ⵉⵊⵔⵔⴷⵏ"
+    },
+    "documents_count_one": "%1$s ⵏ ⵜⵏⵜⴰⵎⵜ",
+    "documents_count_other": "%1$s ⵏ ⵜⵏⵜⴰⵎⵉⵏ",
+    "download": "ⴰⴳⵎ",
+    "downloading": "ⴰⵔ ⵉⵜⵜⵡⴰⴳⴰⵎ (%1$s%%)…",
+    "expanded": "ⴰⵎⵉⵔⵉⵡ",
+    "notes": "ⵜⵓⵏⵏⵉⴹⵉⵏ",
+    "open": "ⵕⵥⵎ",
+    "operations": "ⵜⵉⵎⵀⴰⵍ",
+    "pdf_export": "ⴰⵙⵉⴼⴹ ⵏ PDF",
+    "security": "ⵜⴰⵏⴼⵔⵓⵜ",
+    "security_settings": "ⵜⵉⵙⵖⴰⵍ ⵏ ⵜⵏⴼⵔⵓⵜ",
+    "share_application": "ⴰⵣⵏ ⵜⵉⵙⵏⵙⵉ"
+}
