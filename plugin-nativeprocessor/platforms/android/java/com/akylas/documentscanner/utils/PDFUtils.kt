@@ -256,14 +256,17 @@ class PDFUtils {
                     )
             }
             finalBitmapOptions.inMutable = colorMatrix != null
-            val bmp = BitmapFactory.decodeFile(src, finalBitmapOptions) ?: return null
+            var bmp = BitmapFactory.decodeFile(src, finalBitmapOptions) ?: return null
             if (hasColorMatrix) {
                 val jsonArray = JSONArray(colorMatrix)
                 val floatArray = Array(jsonArray.length()) { jsonArray.getDouble(it).toFloat() }
-                val canvas = android.graphics.Canvas(bmp)
+                val filteredBmp = Bitmap.createBitmap(bmp.width, bmp.height, bmp.config ?: Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(filteredBmp)
                 val paint = Paint()
                 paint.colorFilter = ColorMatrixColorFilter(floatArray.toFloatArray())
                 canvas.drawBitmap(bmp, 0F, 0F, paint)
+                bmp.recycle()
+                bmp = filteredBmp
             }
 
             val imgBytes = ByteArrayOutputStream()
