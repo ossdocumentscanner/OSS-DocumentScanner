@@ -8,11 +8,15 @@ android {
                 cmake {
                     cppFlags "-frtti -fexceptions"
                     abiFilters 'armeabi-v7a', "arm64-v8a", 'x86', 'x86_64'
+                    def cmakeArguments = ["-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON", "-DANDROID_TOOLCHAIN=clang", "-DANDROID_STL=c++_static"]
                     if (project.hasProperty("withQRCode")) {
-                        arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON", "-DANDROID_TOOLCHAIN=clang", "-DANDROID_STL=c++_static", "-DWITH_QRCODE=1"
-                    } else {
-                        arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON", "-DANDROID_TOOLCHAIN=clang", "-DANDROID_STL=c++_static"
+                        cmakeArguments << "-DWITH_QRCODE=1"
                     }
+                    // development only, see plugin-nativeprocessor/platforms/android/cpp/hwcap_sve.cpp
+                    // always passed explicitly: a value left in the CMake cache would survive
+                    // the flag being dropped and silently disable SVE in a release build
+                    cmakeArguments << ("-DDISABLE_SVE=" + (project.hasProperty("disableSVE") ? "1" : "0"))
+                    arguments(*cmakeArguments)
                 }
             }
         }
