@@ -95,7 +95,10 @@ export abstract class BaseDataSyncService extends BaseSyncService {
             docDataFolder = getDocumentsService().dataFolder.getFolder(docId);
             pages.forEach((page) => {
                 const pageDataFolder = docDataFolder.getFolder(page.id);
-                page.sourceImagePath = path.join(pageDataFolder.path, basename(page.sourceImagePath));
+                // the original image can be missing: it is not kept for every page
+                if (page.sourceImagePath) {
+                    page.sourceImagePath = path.join(pageDataFolder.path, basename(page.sourceImagePath));
+                }
                 page.imagePath = path.join(pageDataFolder.path, basename(page.imagePath));
             });
             pageIds = pages.map((p) => p.id);

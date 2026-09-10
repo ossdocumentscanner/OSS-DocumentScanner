@@ -9,6 +9,7 @@ import { DocFolder, Document, IDocFolder, OCRDocument, OCRPage, Page, Tag } from
 import { PKPass, PKPassType } from '~/models/PKPass';
 import { EVENT_DOCUMENT_DELETED, EVENT_DOCUMENT_RESTORED, EVENT_DOCUMENT_TRASHED, EVENT_DOCUMENT_USE_COUNT, SETTINGS_ROOT_DATA_FOLDER } from '~/utils/constants';
 import { groupByArray } from '@shared/utils';
+import { StorageSizes } from '~/utils/originals';
 import DatabaseInterface from 'kiss-orm/dist/Databases/DatabaseInterface';
 import QueryIdentifier from 'kiss-orm/dist/Queries/QueryIdentifier';
 export const sql = SqlQuery.createFromTemplateString;
@@ -360,6 +361,27 @@ export class PageRepository extends BaseRepository<OCRPage, Page> {
                         console.error('Error filling Page search indexes', e);
                         reject(e);
                     }
+                }),
+
+            addPageSourceSize: (sequenceDb: DatabaseInterface) =>
+                new Promise<void>(async (resolve, reject) => {
+                    try {
+                        await sequenceDb.query(sql`ALTER TABLE Page ADD COLUMN sourceSize INTEGER`);
+                        const pages = await this.search();
+                        DEV_LOG && console.log('filling sourceSize for Pages', pages.length);
+                        await doInBatch(
+                            pages,
+                            async (page: OCRPage) => {
+                                const sourceSize = page.sourceImagePath && File.exists(page.sourceImagePath) ? File.fromPath(page.sourceImagePath).size : 0;
+                                await super.update(page, { sourceSize });
+                            },
+                            10
+                        );
+                        resolve();
+                    } catch (e) {
+                        console.error('Error filling Page sourceSize', e);
+                        reject(e);
+                    }
                 })
         },
         CARD_APP
@@ -389,6 +411,7 @@ export class PageRepository extends BaseRepository<OCRPage, Page> {
             width INTEGER,
             height INTEGER,
             size INTEGER,
+            sourceSize INTEGER,
             sourceImagePath TEXT,
             imagePath TEXT,
             document_id TEXT,
@@ -451,7 +474,8 @@ export class PageRepository extends BaseRepository<OCRPage, Page> {
             } else if (k === 'name') {
                 toUpdate[k] = value;
                 toUpdate.nameSearch = normalizeSearchString(value);
-            } else if (typeof value === 'object' || Array.isArray(value)) {
+                // `typeof null` is 'object': null must be stored as SQL NULL, not as the "null" string
+            } else if (value !== null && (typeof value === 'object' || Array.isArray(value))) {
                 toUpdate[k] = JSON.stringify(value);
             } else {
                 toUpdate[k] = value;
@@ -953,6 +977,15 @@ export class DocumentsService extends Observable {
 
         this.notify({ eventName: 'started' });
         this.started = true;
+    }
+    /** What every page of every document uses on disk, split between processed and original images. */
+    async getStorageSizes(): Promise<StorageSizes & { documentsCount: number }> {
+        const result = await this.db.query(sql`SELECT SUM(p.size) AS size, SUM(p.sourceSize) AS sourceSize, COUNT(DISTINCT p.document_id) AS documentsCount
+FROM Page p
+LEFT JOIN Document d ON d.id = p.document_id
+WHERE d.trashedDate IS NULL`);
+        const { documentsCount, size, sourceSize } = result[0] ?? {};
+        return { size: size || 0, sourceSize: sourceSize || 0, total: (size || 0) + (sourceSize || 0), documentsCount: documentsCount || 0 };
     }
     async deleteDocuments(documents: OCRDocument[]) {
         DEV_LOG &&

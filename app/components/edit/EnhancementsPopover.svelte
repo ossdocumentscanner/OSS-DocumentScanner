@@ -7,6 +7,7 @@
     import { ColorMatricesTypes, getColorMatrix } from '~/utils/matrix';
     import { lc } from '@nativescript-community/l';
     import { colors, fontScale } from '~/variables';
+    import { hasOriginalImage } from '~/utils/originals';
     const filters = ColorMatricesTypes.map((k) => ({
         ...k,
         text: lc(k.id),
@@ -29,11 +30,14 @@
         const value = transforms.indexOf(transformId) !== -1;
         return { type: 'checkbox', id: transformId, value, data: value };
     }
+    // transforms are recomputed from the original image: without it only the color filters are available
     const options = (
-        TRANSFORMS.map((i) => ({
-            ...getData(i.id),
-            ...i
-        })) as any[]
+        hasOriginalImage(item)
+            ? (TRANSFORMS.map((i) => ({
+                  ...getData(i.id),
+                  ...i
+              })) as any[])
+            : []
     ).concat({
         type: 'filters'
     });

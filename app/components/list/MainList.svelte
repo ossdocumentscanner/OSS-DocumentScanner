@@ -1,12 +1,10 @@
 <script context="module" lang="ts">
-    import { GestureRootView } from '@nativescript-community/gesturehandler';
     import { Template } from '@nativescript-community/svelte-native/components';
     import { NativeViewElementNode } from '@nativescript-community/svelte-native/dom';
     import { Canvas, CanvasView, LayoutAlignment, Paint, StaticLayout } from '@nativescript-community/ui-canvas';
-    import { CheckBox } from '@nativescript-community/ui-checkbox';
     import { CollectionView } from '@nativescript-community/ui-collectionview';
     import { Img } from '@nativescript-community/ui-image';
-    import { Label, createNativeAttributedString } from '@nativescript-community/ui-label';
+    import { createNativeAttributedString } from '@nativescript-community/ui-label';
     import { confirm, prompt } from '@nativescript-community/ui-material-dialogs';
     import { VerticalPosition } from '@nativescript-community/ui-popover';
     import { AnimationDefinition, Application, ApplicationSettings, Color, EventData, Frame, NavigatedData, ObservableArray, Page, Screen, StackLayout } from '@nativescript/core';
@@ -46,7 +44,6 @@
         DEFAULT_NB_COLUMNS_LANDSCAPE,
         DEFAULT_SORT_ORDER,
         DEFAULT_TRASH_ENABLED,
-        DEFAULT_TRASH_REMEMBERED_DELETE_MODE,
         DEFAULT_VIEW_STYLE,
         EVENT_DOCUMENT_ADDED,
         EVENT_DOCUMENT_DELETED,
@@ -65,11 +62,11 @@
         SETTINGS_NB_COLUMNS_LANDSCAPE,
         SETTINGS_SORT_ORDER,
         SETTINGS_TRASH_ENABLED,
-        SETTINGS_TRASH_REMEMBERED_DELETE_MODE,
         SETTINGS_VIEW_STYLE
     } from '~/utils/constants';
     import {
-        createView,
+        deleteDocumentsWithConfirm,
+        deleteOriginalImages,
         detectOCR,
         goToDocumentView,
         goToFolderView,
@@ -914,82 +911,8 @@
     async function deleteSelectedDocuments() {
         if (nbSelected > 0) {
             try {
-                if (trashEnabled && !isTrash) {
-                    DEV_LOG && console.log('rememberedMode1');
-                    const rememberedMode = ApplicationSettings.getString(SETTINGS_TRASH_REMEMBERED_DELETE_MODE, DEFAULT_TRASH_REMEMBERED_DELETE_MODE);
-                    let result = false;
-                    DEV_LOG && console.log('rememberedMode', rememberedMode);
-                    if (!rememberedMode) {
-                        const view = createView(GestureRootView, {
-                            columns: 'auto,*',
-                            rows: 'auto'
-                        });
-                        const checkBox = createView(CheckBox, {});
-                        const label = createView(Label, {
-                            verticalAlignment: 'center',
-                            col: 1,
-                            text: lc('remember_delete_choice')
-                        });
-                        label.on('tap', () => {
-                            DEV_LOG && console.log('label tap');
-                            checkBox.checked = !checkBox.checked;
-                        });
-                        view.addChild(checkBox);
-                        view.addChild(label);
-                        result = await confirm({
-                            neutralButtonText: lc('cancel'),
-                            message: lcp('confirm_move_to_trash', nbSelected),
-                            cancelButtonText: lc('delete_permanently'),
-                            okButtonText: lc('move_to_trash'),
-                            title: lc('delete'),
-                            view
-                        } as any);
-                        if (result !== null && checkBox.checked) {
-                            ApplicationSettings.setString(SETTINGS_TRASH_REMEMBERED_DELETE_MODE, result === true ? 'trash' : 'permament');
-                        }
-                    } else {
-                        switch (rememberedMode) {
-                            case 'permament':
-                                result = false;
-                                break;
-                            case 'trash':
-                                result = true;
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    if (result === true) {
-                        await documentsService.trashDocuments(await getSelectedDocuments());
-                        return true;
-                    } else if (result === false) {
-                        // neutral button tapped: delete permanently
-                        const confirmed = await confirm({
-                            cancelButtonText: lc('cancel'),
-                            message: lcp('confirm_delete_permanently', nbSelected),
-                            okButtonText: lc('delete_permanently'),
-                            title: lc('delete_permanently')
-                        });
-                        if (confirmed) {
-                            await documentsService.deleteDocuments(await getSelectedDocuments());
-                            return true;
-                        }
-                        return false;
-                    }
-                    return false;
-                } else {
-                    const result = await confirm({
-                        cancelButtonText: lc('cancel'),
-                        message: lcp('confirm_delete_documents', nbSelected),
-                        okButtonText: lc('delete'),
-                        title: lc('delete')
-                    });
-                    if (result) {
-                        await documentsService.deleteDocuments(await getSelectedDocuments());
-                        return true;
-                    }
-                    return false;
-                }
+                // the trash list only offers "delete permanently"
+                return await deleteDocumentsWithConfirm(await getSelectedDocuments());
             } catch (error) {
                 showError(error);
             }
@@ -1224,7 +1147,8 @@
             ...(nbSelected === 1 ? [{ icon: 'mdi-rename', id: 'rename', name: lc('rename') }] : []),
             { icon: 'mdi-star', id: 'favorite', name: lc('toggle_favorite') },
             { icon: 'mdi-folder-swap', id: 'move_folder', name: lc('move_folder') },
-            { icon: 'mdi-fullscreen', id: 'fullscreen', name: lc('show_fullscreen_images') }
+            { icon: 'mdi-fullscreen', id: 'fullscreen', name: lc('show_fullscreen_images') },
+            { icon: 'mdi-image-remove', id: 'delete_originals', name: lc('delete_original_images') }
         ];
     }
 
@@ -1275,6 +1199,12 @@
                     break;
                 case 'transform':
                     result = await transformPages({ documents: await getSelectedDocuments() });
+                    if (result) {
+                        unselectAll();
+                    }
+                    break;
+                case 'delete_originals':
+                    result = await deleteOriginalImages({ documents: await getSelectedDocuments() });
                     if (result) {
                         unselectAll();
                     }

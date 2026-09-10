@@ -6,7 +6,6 @@
     import { AnimationDefinition, Application, ApplicationSettings, ContentView, EventData, ObservableArray, Page, PageTransition, SharedTransition, StackLayout } from '@nativescript/core';
     import { AndroidActivityBackPressedEventData } from '@nativescript/core/application';
     import { throttle } from '@nativescript/core/utils';
-    import { filesize } from 'filesize';
     import { onDestroy, onMount } from 'svelte';
     import { Template } from '@nativescript-community/svelte-native/components';
     import { NativeViewElementNode } from '@nativescript-community/svelte-native/dom';
@@ -41,8 +40,11 @@
     } from '~/utils/constants';
     import { showError } from '@shared/utils/showError';
     import { goBack, navigate, showModal } from '@shared/utils/svelte/ui';
+    import { computeStorageSizes } from '~/utils/originals';
     import {
+        deleteOriginalImages,
         detectOCR,
+        formatStorageSizes,
         hideLoading,
         importAndScanImage,
         importImageFromCamera,
@@ -556,6 +558,7 @@
             { icon: 'mdi-auto-fix', id: 'transform', name: lc('transform_images') },
             { icon: 'mdi-text-recognition', id: 'ocr', name: lc('ocr_document') },
             { id: 'select_all', name: lc('select_all'), icon: 'mdi-select-all' },
+            { icon: 'mdi-image-remove', id: 'delete_originals', name: lc('delete_original_images') },
             { color: colorError, icon: 'mdi-delete', id: 'delete', name: lc('delete') }
         ];
     }
@@ -595,6 +598,12 @@
                         unselectAll();
                     }
                     break;
+                case 'delete_originals':
+                    result = await deleteOriginalImages({ pages: getSelectedPagesWithData() });
+                    if (result) {
+                        unselectAll();
+                    }
+                    break;
             }
         } catch (error) {
             showError(error);
@@ -609,6 +618,7 @@
             { id: 'reorder', name: lc('reorder_pages'), icon: 'mdi-reorder-horizontal' },
             { id: 'transform', name: lc('transform_images'), icon: 'mdi-auto-fix' },
             { id: 'ocr', name: lc('ocr_document'), icon: 'mdi-text-recognition' },
+            { id: 'delete_originals', name: lc('delete_original_images'), icon: 'mdi-image-remove' },
             { id: 'delete', name: lc('delete'), icon: 'mdi-delete', color: colorError }
         ] as any);
         return showPopoverMenu({
@@ -633,6 +643,10 @@
                         break;
                     case 'transform':
                         await transformPages({ documents: [document] });
+                        unselectAll();
+                        break;
+                    case 'delete_originals':
+                        await deleteOriginalImages({ documents: [document] });
                         unselectAll();
                         break;
                     case 'delete':
@@ -786,7 +800,7 @@
                         <cspan fontFamily={$fonts.mdi} fontSize={24} text="mdi-reorder-horizontal" visibility={inEditMode ? 'visible' : 'hidden'} />
                         <cspan
                             paddingLeft={inEditMode ? 30 : 0}
-                            text={`${item.page.width} x ${item.page.height}\n${filesize(item.page.size, { output: 'string' })}`}
+                            text={`${item.page.width} x ${item.page.height}\n${formatStorageSizes(computeStorageSizes([item.page]))}`}
                             textAlignment="left"
                             verticalAlignment="bottom"
                         />

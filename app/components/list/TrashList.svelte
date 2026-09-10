@@ -10,7 +10,8 @@
     import { ellipsize } from '~/utils/utils.common';
     import { colors, fontScale } from '~/variables';
     import dayjs from 'dayjs';
-    import { filesize } from 'filesize';
+    import { computeStorageSizes } from '~/utils/originals';
+    import { formatStorageSizes } from '~/utils/ui';
     import PageIndicator from '../common/PageIndicator.svelte';
     import RotableImageView from '../common/RotableImageView.svelte';
     import SelectedIndicator from '../common/SelectedIndicator.svelte';
@@ -53,15 +54,7 @@
         textPaint.color = colorOnSurfaceVariant;
         const { doc } = item;
         textPaint.textSize = condensed ? 11 : 14 * $fontScale;
-        canvas.drawText(
-            filesize(
-                doc.pages.reduce((acc, v) => acc + v.size, 0),
-                { output: 'string' }
-            ),
-            dx,
-            h - (condensed ? 0 : 16) - 10,
-            textPaint
-        );
+        canvas.drawText(formatStorageSizes(computeStorageSizes(doc.pages)), dx, h - (condensed ? 0 : 16) - 10, textPaint);
         textPaint.color = colorOnBackground;
         const topText = createNativeAttributedString({
             spans: [

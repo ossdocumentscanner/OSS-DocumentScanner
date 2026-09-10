@@ -635,7 +635,10 @@ export default class SyncWorker extends BaseWorker {
             for (let index = 0; index < missingLocalPages.length; index++) {
                 const missingLocalPage = missingLocalPages[index];
                 const pageDataFolder = docDataFolder.getFolder(missingLocalPage.id);
-                missingLocalPage.sourceImagePath = path.join(pageDataFolder.path, basename(missingLocalPage.sourceImagePath));
+                // the original image can be missing: it is not kept for every page
+                if (missingLocalPage.sourceImagePath) {
+                    missingLocalPage.sourceImagePath = path.join(pageDataFolder.path, basename(missingLocalPage.sourceImagePath));
+                }
                 missingLocalPage.imagePath = path.join(pageDataFolder.path, basename(missingLocalPage.imagePath));
                 await service.importFolderFromRemote(path.join(document.id, missingLocalPage.id), pageDataFolder);
 
@@ -668,7 +671,8 @@ export default class SyncWorker extends BaseWorker {
                     // check if we need to recreate the image
                     let imageChanged = false;
                     DEV_LOG && console.log('sync page FROM webdav!', remotePageToSync.id, JSON.stringify(pageToUpdate));
-                    if (pageToUpdate.crop || pageToUpdate.transforms) {
+                    // without the local original image the crop/transforms can't be recomputed
+                    if ((pageToUpdate.crop || pageToUpdate.transforms) && localPage.sourceImagePath) {
                         const file = File.fromPath(localPage.imagePath);
                         const crop = pageToUpdate.crop || localPage.crop;
                         const transforms = pageToUpdate.transforms || localPage.transforms;
@@ -795,7 +799,8 @@ export default class SyncWorker extends BaseWorker {
                     // check if we need to recreate the image
                     DEV_LOG && console.log('sync page FROM webdav!', localPageToSync.id, JSON.stringify(pageToUpdate));
                     let imageChanged = false;
-                    if (pageToUpdate.crop || pageToUpdate.transforms) {
+                    // without the local original image the crop/transforms can't be recomputed
+                    if ((pageToUpdate.crop || pageToUpdate.transforms) && localPageToSync.sourceImagePath) {
                         const file = File.fromPath(localPageToSync.imagePath);
 
                         const crop = pageToUpdate.crop || localPageToSync.crop;
